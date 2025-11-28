@@ -9,23 +9,26 @@ import {
   Plus,
   Calendar,
   Pin,
-  Trash2
+  Trash2,
+  Star
 } from 'lucide-react';
-import { Task } from '../page';
+import { formatDueDate, isOverdue, getNextWeekday, toDateString, getTodayDateString } from '@/lib/utils/date';
+import { addDays } from 'date-fns';
+import type { TaskWithDetails } from '@/types';
 
 interface TaskItemProps {
-  task: Task;
-  toggleTask: (id: number | string) => void;
-  toggleSuggestions: (id: number | string) => void;
-  handleDragStart: (e: React.DragEvent, id: number | string) => void;
-  handleAddAllSuggestions: (id: number | string) => void;
-  handleAddManualSubTask: (id: number | string, text: string) => void;
-  toggleSubTask: (taskId: number | string, subTaskId: number | string) => void;
-  deleteSubTask: (taskId: number | string, subTaskId: number | string) => void;
-  // New props
-  handlePinTask: (id: number | string) => void;
-  handleDeleteTask: (id: number | string) => void;
-  handleUpdateDate: (id: number | string, date: string | null) => void;
+  task: TaskWithDetails;
+  toggleTask: (id: string) => void;
+  toggleSuggestions: (id: string) => void;
+  handleDragStart: (e: React.DragEvent, id: string) => void;
+  handleAddAllSuggestions: (id: string) => void;
+  handleAddManualSubTask: (id: string, text: string) => void;
+  toggleSubTask: (taskId: string, subTaskId: string) => void;
+  deleteSubTask: (taskId: string, subTaskId: string) => void;
+  handlePinTask: (id: string) => void;
+  handleDeleteTask: (id: string) => void;
+  handleUpdateDate: (id: string, date: string | null) => void;
+  handleToggleFocused?: (id: string) => void;
 }
 
 const TaskItem = ({ 
@@ -39,7 +42,8 @@ const TaskItem = ({
   deleteSubTask,
   handlePinTask,
   handleDeleteTask,
-  handleUpdateDate
+  handleUpdateDate,
+  handleToggleFocused
 }: TaskItemProps) => {
   const [manualInput, setManualInput] = useState('');
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -64,40 +68,34 @@ const TaskItem = ({
   const completedSub = task.subTasks.filter(t => t.completed).length;
   const progress = totalSub > 0 ? Math.round((completedSub / totalSub) * 100) : 0;
 
-  // Date Formatting
-  const formatDate = (dateStr: string) => {
-    if (!dateStr) return '';
-    const date = new Date(dateStr);
-    const today = new Date();
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-
-    if (date.toDateString() === today.toDateString()) return 'Today';
-    if (date.toDateString() === tomorrow.toDateString()) return 'Tomorrow';
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-  };
-
+  // Date quick set handler
   const setDateQuick = (type: 'today' | 'tomorrow' | 'this-weekend' | 'next-week' | 'custom' | 'clear', customDate?: string) => {
     if (type === 'clear') {
       handleUpdateDate(task.id, null);
     } else if (type === 'custom' && customDate) {
       handleUpdateDate(task.id, customDate);
     } else {
-      const d = new Date();
-      if (type === 'tomorrow') d.setDate(d.getDate() + 1);
-      if (type === 'this-weekend') {
-        // Find next Saturday
-        const day = d.getDay();
-        const diff = day === 6 ? 7 : 6 - day; // If Sat, next Sat. If not, coming Sat.
-        d.setDate(d.getDate() + diff);
+      let date: Date;
+      const today = new Date();
+      
+      switch (type) {
+        case 'today':
+          date = today;
+          break;
+        case 'tomorrow':
+          date = addDays(today, 1);
+          break;
+        case 'this-weekend':
+          date = getNextWeekday(6); // Saturday
+          break;
+        case 'next-week':
+          date = getNextWeekday(1); // Monday
+          break;
+        default:
+          date = today;
       }
-      if (type === 'next-week') {
-        // Find next Monday
-        const day = d.getDay();
-        const diff = day === 0 ? 1 : 8 - day; // If Sun (0), +1. If Mon-Sat, + (8-day).
-        d.setDate(d.getDate() + diff);
-      }
-      handleUpdateDate(task.id, d.toISOString().split('T')[0]);
+      
+      handleUpdateDate(task.id, toDateString(date));
     }
     setShowDatePicker(false);
   };
@@ -140,7 +138,7 @@ const TaskItem = ({
   }
 
   return (
-    <div className="relative overflow-hidden rounded-2xl group touch-pan-y">
+    <div id={`task-${task.id}`} className="relative overflow-hidden rounded-2xl group touch-pan-y">
       {/* Swipe Background Layer */}
       <div className={`absolute inset-0 flex items-center justify-between px-4 transition-colors duration-300 ${
         swipeX > 50 ? 'bg-orange-100' : swipeX < -50 ? 'bg-rose-100' : 'bg-transparent'
@@ -170,6 +168,7 @@ const TaskItem = ({
           relative bg-white border shadow-[0_2px_10px_rgba(0,0,0,0.02)] rounded-2xl p-3 
           transition-all duration-300 ease-out cursor-grab active:cursor-grabbing z-10
           ${task.isPinned ? 'border-l-4 border-l-orange-300 border-y-transparent border-r-transparent' : 'border-transparent hover:border-stone-100 hover:shadow-[0_4px_20px_rgba(0,0,0,0.05)]'}
+          ${task.isFocused ? 'ring-2 ring-orange-200 ring-offset-1' : ''}
           ${isSwiping ? 'transition-none' : ''}
         `}
       >
@@ -204,9 +203,9 @@ const TaskItem = ({
                  {/* Date Tag */}
                  {task.dueDate && (
                    <span className={`text-[10px] px-1.5 py-0.5 rounded bg-stone-50 text-stone-400 font-medium tracking-wide flex items-center gap-1 ${
-                     new Date(task.dueDate) < new Date() ? 'text-rose-400 bg-rose-50' : ''
+                     isOverdue(task.dueDate) ? 'text-rose-400 bg-rose-50' : ''
                    }`}>
-                     {formatDate(task.dueDate)}
+                     {formatDueDate(task.dueDate)}
                    </span>
                  )}
 
@@ -219,7 +218,25 @@ const TaskItem = ({
                </div>
                
                {/* Indicators */}
-               <div className="flex gap-1">
+               <div className="flex gap-1.5 items-center">
+                  {/* Focus Star Button */}
+                  {handleToggleFocused && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleToggleFocused(task.id);
+                      }}
+                      className={`transition-all ${
+                        task.isFocused 
+                          ? 'text-orange-400' 
+                          : 'text-stone-200 opacity-0 group-hover:opacity-100 hover:text-orange-300'
+                      }`}
+                      title={task.isFocused ? "Remove from today's focus" : "Add to today's focus"}
+                    >
+                      <Star size={14} fill={task.isFocused ? 'currentColor' : 'none'} strokeWidth={1.5} />
+                    </button>
+                  )}
+                  
                   {task.aiSuggestions.length > 0 && (
                     <Sparkles size={12} className="text-orange-300 mt-1 opacity-60" />
                   )}

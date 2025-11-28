@@ -27,6 +27,15 @@
   to { opacity: 1; transform: translateY(0); }
 }
 
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
 /* Helper classes to match Gemini code's custom font classes to Tailwind's font families */
 .font-heading {
   font-family: var(--font-serif);

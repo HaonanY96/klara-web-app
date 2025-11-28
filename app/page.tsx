@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
   Sparkles, 
   CheckCircle2, 
@@ -11,158 +11,93 @@ import {
   Calendar,
   Clock,
   Coffee,
-  Pin
+  Loader2
 } from 'lucide-react';
 import QuadrantSection from './components/QuadrantSection';
 import ReflectionView from './components/ReflectionView';
-
-// --- TYPES ---
-interface SubTask {
-  id: number | string;
-  text: string;
-  completed: boolean;
-}
-
-export interface Task {
-  id: number | string;
-  text: string;
-  completed: boolean;
-  importance: string;
-  urgency: string;
-  aiSuggestions: string[];
-  showSuggestions: boolean;
-  subTasks: SubTask[];
-  dueDate: string | null; // ISO Date string YYYY-MM-DD
-  isPinned: boolean;
-}
-
-// --- MOCK DATA ---
-const INITIAL_TASKS: Task[] = [
-  { 
-    id: 1, 
-    text: "Finalize Q3 Strategy document", 
-    completed: false, 
-    importance: 'high', 
-    urgency: 'high', 
-    aiSuggestions: [], 
-    showSuggestions: false,
-    subTasks: [],
-    dueDate: null,
-    isPinned: true 
-  },
-  { 
-    id: 2, 
-    text: "Plan a 3-day trip to Kyoto", 
-    completed: false, 
-    importance: 'high', 
-    urgency: 'low', 
-    aiSuggestions: ["Check flight availability", "Book ryokan/hotel", "Create itinerary draft", "Buy JR Pass"], 
-    showSuggestions: true, 
-    subTasks: [],
-    dueDate: new Date(Date.now() + 86400000).toISOString().split('T')[0], // Tomorrow
-    isPinned: false
-  },
-  { 
-    id: 3, 
-    text: "Pay electricity bill", 
-    completed: false, 
-    importance: 'low', 
-    urgency: 'high', 
-    aiSuggestions: [], 
-    showSuggestions: false,
-    subTasks: [],
-    dueDate: null,
-    isPinned: false
-  },
-  { 
-    id: 4, 
-    text: "Email design team", 
-    completed: false, 
-    importance: 'low', 
-    urgency: 'low', 
-    aiSuggestions: [], 
-    showSuggestions: false,
-    subTasks: [],
-    dueDate: null,
-    isPinned: false
-  }, 
-  { 
-    id: 5, 
-    text: "Watch that new sci-fi movie", 
-    completed: false, 
-    importance: 'low', 
-    urgency: 'low', 
-    aiSuggestions: [], 
-    showSuggestions: false,
-    subTasks: [],
-    dueDate: null,
-    isPinned: false
-  },
-  { 
-    id: 6, 
-    text: "Buy groceries", 
-    completed: false, 
-    importance: 'low', 
-    urgency: 'high', 
-    aiSuggestions: [], 
-    showSuggestions: false,
-    subTasks: [],
-    dueDate: null,
-    isPinned: false
-  },
-  { 
-    id: 7, 
-    text: "Call Mom", 
-    completed: false, 
-    importance: 'high', 
-    urgency: 'low', 
-    aiSuggestions: [], 
-    showSuggestions: false,
-    subTasks: [],
-    dueDate: null,
-    isPinned: false
-  },
-];
+import TodaysFocus from './components/TodaysFocus';
+import EmptyState from './components/EmptyState';
+import AppHeader from './components/AppHeader';
+import AppMenu from './components/AppMenu';
+import { useToast } from './components/Toast';
+import { useTasks, useUserPreferences } from '@/lib/hooks';
+import { requestAISuggestions, shouldSuggestSubtasks } from '@/lib/services/aiClient';
+import { motion, AnimatePresence } from 'motion/react';
 
 const KinoApp = () => {
+  const { showToast } = useToast();
   const [activeTab, setActiveTab] = useState('focus'); 
   const [inputText, setInputText] = useState('');
   const [isAiThinking, setIsAiThinking] = useState(false);
-  const [draggedTaskId, setDraggedTaskId] = useState<number | string | null>(null);
-  const [tasks, setTasks] = useState<Task[]>(INITIAL_TASKS);
-  const [formattedDate, setFormattedDate] = useState('');
+  const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
   
   // Input Date State
   const [isInputFocused, setIsInputFocused] = useState(false);
   const [inputDueDate, setInputDueDate] = useState<string | null>(null);
   const [showInputDatePicker, setShowInputDatePicker] = useState(false);
+  
+  // Input ref for focusing
+  const inputRef = useRef<HTMLInputElement>(null);
 
-  // Format date on client side only to avoid hydration mismatch
-  useEffect(() => {
-    setFormattedDate(
-      new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
-    );
-  }, []);
+  // AI Online status (for now, always true - can be connected to actual API status later)
+  const [isAIOnline] = useState(true);
 
-  const handleAddTask = (e: React.FormEvent) => {
+  // Use IndexedDB-backed tasks
+  const {
+    tasks,
+    incompleteTasks,
+    focusedTasks,
+    todayCompletedTasks,
+    groupedTasks,
+    isLoading,
+    addTask,
+    toggleTask,
+    togglePinned,
+    toggleFocused,
+    updateQuadrant,
+    updateDueDate,
+    deleteTask,
+    addSubTask,
+    addAllSubTasks,
+    toggleSubTask,
+    deleteSubTask,
+    toggleShowSuggestions,
+  } = useTasks();
+
+  // User preferences for progressive disclosure and AI tone
+  const {
+    tasksCompletedCount,
+    hasSeenReflectionIntro,
+    incrementTasksCompleted,
+    toneStyle,
+  } = useUserPreferences();
+
+  // State for dismissing the reflection nudge
+  const [reflectionNudgeDismissed, setReflectionNudgeDismissed] = useState(false);
+
+  const handleAddTask = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!inputText.trim()) return;
 
     const lowerText = inputText.toLowerCase();
-    let detectedImportance = 'low';
-    let detectedUrgency = 'low';
-    let suggestions: string[] = [];
+    let detectedImportance: 'high' | 'low' = 'low';
+    let detectedUrgency: 'high' | 'low' = 'low';
     let autoDetectedDate = inputDueDate;
 
-    // Basic AI Simulation for Matrix
-    if (lowerText.includes('plan') || lowerText.includes('strategy') || lowerText.includes('launch')) {
+    // Keyword-based quadrant classification
+    if (lowerText.includes('plan') || lowerText.includes('strategy') || lowerText.includes('launch') || lowerText.includes('important')) {
       detectedImportance = 'high';
     }
-    if (lowerText.includes('now') || lowerText.includes('asap') || lowerText.includes('urgent') || lowerText.includes('bill')) {
+    if (lowerText.includes('now') || lowerText.includes('asap') || lowerText.includes('urgent') || lowerText.includes('bill') || lowerText.includes('deadline')) {
       detectedUrgency = 'high';
     }
+    if (lowerText.includes("movie") || lowerText.includes("watch") || lowerText.includes("game") || lowerText.includes("someday")) {
+      detectedImportance = 'low';
+      detectedUrgency = 'low';
+    }
 
-    // Basic AI Date Extraction (Mock)
+    // Date extraction from text
     if (!autoDetectedDate) {
       if (lowerText.includes('tomorrow')) {
         const d = new Date();
@@ -173,138 +108,93 @@ const KinoApp = () => {
       }
     }
 
-    // Demo Data Logic
-    if (lowerText.includes("trip") || lowerText.includes("kyoto")) {
-      suggestions = ["Check flight availability", "Book ryokan/hotel", "Create itinerary draft", "Buy JR Pass"];
-      detectedImportance = 'high';
-      detectedUrgency = 'low';
-    } else if (lowerText.includes("launch") || lowerText.includes("website")) {
-      suggestions = ["Finalize domain setup", "Check mobile responsiveness", "Set up analytics", "Prepare social media announcement"];
-      detectedImportance = 'high';
-      detectedUrgency = 'high';
-    } else if (lowerText.includes("movie") || lowerText.includes("watch") || lowerText.includes("game") || lowerText.includes("someday")) {
-       detectedImportance = 'low';
-       detectedUrgency = 'low';
-    }
+    // Check if task should get AI suggestions
+    const shouldGetSuggestions = shouldSuggestSubtasks(inputText);
 
-    const newTask: Task = {
-      id: Date.now(),
-      text: inputText,
-      completed: false,
-      importance: detectedImportance,
-      urgency: detectedUrgency,
-      aiSuggestions: suggestions,
-      showSuggestions: suggestions.length > 0,
-      subTasks: [],
-      dueDate: autoDetectedDate,
-      isPinned: false
-    };
-
-    if (suggestions.length > 0) {
+    if (shouldGetSuggestions) {
       setIsAiThinking(true);
-      setTimeout(() => {
-        setTasks(prev => [newTask, ...prev]);
-        setIsAiThinking(false);
-        setInputText('');
-        setInputDueDate(null);
-      }, 1500);
+      const aiResult = await requestAISuggestions({ 
+        taskText: inputText,
+        toneStyle,
+      });
+      
+      await addTask(inputText, {
+        importance: detectedImportance,
+        urgency: detectedUrgency,
+        dueDate: autoDetectedDate,
+        aiSuggestions: aiResult.success ? aiResult.suggestions : [],
+      });
+      
+      setIsAiThinking(false);
     } else {
-      setTasks(prev => [newTask, ...prev]);
-      setInputText('');
-      setInputDueDate(null);
+      await addTask(inputText, {
+        importance: detectedImportance,
+        urgency: detectedUrgency,
+        dueDate: autoDetectedDate,
+      });
+    }
+    
+    setInputText('');
+    setInputDueDate(null);
+  };
+
+  const handleToggleTask = async (id: string) => {
+    // Check if task is being completed (not uncompleted)
+    const task = tasks.find(t => t.id === id);
+    const isCompleting = task && !task.completed;
+    
+    await toggleTask(id);
+    
+    // Increment counter when completing a task
+    if (isCompleting) {
+      incrementTasksCompleted();
     }
   };
 
-  const toggleTask = (id: number | string) => {
-    setTasks(tasks.map(t => 
-      t.id === id ? { ...t, completed: !t.completed } : t
-    ));
+  const handleToggleSuggestions = (id: string) => {
+    toggleShowSuggestions(id);
   };
 
-  const toggleSuggestions = (id: number | string) => {
-    setTasks(tasks.map(t => 
-      t.id === id ? { ...t, showSuggestions: !t.showSuggestions } : t
-    ));
+  const handlePinTask = async (id: string) => {
+    await togglePinned(id);
   };
 
-  // --- New Actions: Pin, Delete (Drop), Update Date ---
-
-  const handlePinTask = (id: number | string) => {
-    setTasks(prev => prev.map(t => 
-      t.id === id ? { ...t, isPinned: !t.isPinned } : t
-    ));
+  const handleDeleteTask = async (id: string) => {
+    await deleteTask(id);
   };
 
-  const handleDeleteTask = (id: number | string) => {
-    // In a real app, we might want to wait for animation, but we'll handle state directly here
-    // The component will handle the fade-out animation before calling this if we want perfect sync,
-    // but for simplicity, we remove it and React re-renders. 
-    // Better UX: Delay removal slightly or just remove.
-    // We'll let the component call this after animation.
-    setTasks(prev => prev.filter(t => t.id !== id));
+  const handleUpdateDate = async (id: string, date: string | null) => {
+    await updateDueDate(id, date);
   };
 
-  const handleUpdateDate = (id: number | string, date: string | null) => {
-    setTasks(prev => prev.map(t => 
-      t.id === id ? { ...t, dueDate: date } : t
-    ));
+  const handleAddAllSuggestions = async (taskId: string) => {
+    const task = tasks.find(t => t.id === taskId);
+    if (task && task.aiSuggestions.length > 0) {
+      await addAllSubTasks(taskId, task.aiSuggestions);
+    }
   };
 
-  // --- Sub-task Logic ---
-
-  const handleAddAllSuggestions = (taskId: number | string) => {
-    setTasks(prev => prev.map(task => {
-      if (task.id !== taskId) return task;
-      
-      const newSubTasks = task.aiSuggestions.map(text => ({
-        id: Date.now() + Math.random(),
-        text: text,
-        completed: false
-      }));
-
-      return {
-        ...task,
-        subTasks: [...task.subTasks, ...newSubTasks],
-        aiSuggestions: [], 
-        showSuggestions: true 
-      };
-    }));
+  const handleAddManualSubTask = async (taskId: string, text: string) => {
+    await addSubTask(taskId, text);
   };
 
-  const handleAddManualSubTask = (taskId: number | string, text: string) => {
-    setTasks(prev => prev.map(task => {
-      if (task.id !== taskId) return task;
-      return {
-        ...task,
-        subTasks: [...task.subTasks, { id: Date.now(), text, completed: false }]
-      };
-    }));
+  const handleToggleSubTask = async (taskId: string, subTaskId: string) => {
+    await toggleSubTask(taskId, subTaskId);
   };
 
-  const toggleSubTask = (taskId: number | string, subTaskId: number | string) => {
-    setTasks(prev => prev.map(task => {
-      if (task.id !== taskId) return task;
-      return {
-        ...task,
-        subTasks: task.subTasks.map(st => 
-          st.id === subTaskId ? { ...st, completed: !st.completed } : st
-        )
-      };
-    }));
+  const handleDeleteSubTask = async (taskId: string, subTaskId: string) => {
+    await deleteSubTask(taskId, subTaskId);
   };
 
-  const deleteSubTask = (taskId: number | string, subTaskId: number | string) => {
-    setTasks(prev => prev.map(task => {
-      if (task.id !== taskId) return task;
-      return {
-        ...task,
-        subTasks: task.subTasks.filter(st => st.id !== subTaskId)
-      };
-    }));
+  const handleToggleFocused = async (id: string) => {
+    const result = await toggleFocused(id);
+    if (!result.success && result.error) {
+      showToast(result.error, 'info');
+    }
   };
 
   // --- Drag and Drop Logic ---
-  const handleDragStart = (e: React.DragEvent, taskId: number | string) => {
+  const handleDragStart = (e: React.DragEvent, taskId: string) => {
     setDraggedTaskId(taskId);
     e.dataTransfer.effectAllowed = "move";
   };
@@ -314,44 +204,23 @@ const KinoApp = () => {
     e.dataTransfer.dropEffect = "move";
   };
 
-  const handleDrop = (e: React.DragEvent, targetQuadrant: string) => {
+  const handleDrop = async (e: React.DragEvent, targetQuadrant: string) => {
     e.preventDefault();
     if (!draggedTaskId) return;
 
-    let updates = {};
+    let importance: 'high' | 'low' = 'low';
+    let urgency: 'high' | 'low' = 'low';
+
     switch (targetQuadrant) {
-      case 'Do First': updates = { importance: 'high', urgency: 'high' }; break;
-      case 'Schedule': updates = { importance: 'high', urgency: 'low' }; break;
-      case 'Quick Tasks': updates = { importance: 'low', urgency: 'high' }; break;
-      case 'Later': updates = { importance: 'low', urgency: 'low' }; break;
+      case 'Do First': importance = 'high'; urgency = 'high'; break;
+      case 'Schedule': importance = 'high'; urgency = 'low'; break;
+      case 'Quick Tasks': importance = 'low'; urgency = 'high'; break;
+      case 'Later': importance = 'low'; urgency = 'low'; break;
       default: return;
     }
 
-    setTasks(prev => {
-      const taskIndex = prev.findIndex(t => t.id === draggedTaskId);
-      if (taskIndex === -1) return prev;
-      
-      const updatedTask = { ...prev[taskIndex], ...updates };
-      const newTasks = [...prev];
-      newTasks.splice(taskIndex, 1);
-      return [updatedTask, ...newTasks];
-    });
-    
+    await updateQuadrant(draggedTaskId, importance, urgency);
     setDraggedTaskId(null);
-  };
-
-  const getQuadrant = (task: Task) => {
-    if (task.importance === 'high' && task.urgency === 'high') return 'Do First';
-    if (task.importance === 'high' && task.urgency === 'low') return 'Schedule';
-    if (task.importance === 'low' && task.urgency === 'high') return 'Quick Tasks';
-    return 'Later';
-  };
-
-  const groupedTasks = {
-    'Do First': tasks.filter(t => !t.completed && getQuadrant(t) === 'Do First'),
-    'Schedule': tasks.filter(t => !t.completed && getQuadrant(t) === 'Schedule'),
-    'Quick Tasks': tasks.filter(t => !t.completed && getQuadrant(t) === 'Quick Tasks'),
-    'Later': tasks.filter(t => !t.completed && getQuadrant(t) === 'Later'),
   };
 
   // Quick Date Helpers for Input
@@ -376,124 +245,123 @@ const KinoApp = () => {
     setShowInputDatePicker(false);
   };
 
+  // Focus input handler
+  const focusInput = () => {
+    inputRef.current?.focus();
+  };
+
+  // Auto-focus input on app load
+  useEffect(() => {
+    if (!isLoading && activeTab === 'focus') {
+      // Small delay to ensure DOM is ready
+      const timer = setTimeout(() => {
+        inputRef.current?.focus();
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [isLoading, activeTab]);
+
+  // Handle click on Today's Focus task - scroll to it and expand
+  const handleFocusTaskClick = (taskId: string) => {
+    // Expand the task
+    const task = tasks.find(t => t.id === taskId);
+    if (task && !task.showSuggestions) {
+      toggleShowSuggestions(taskId);
+    }
+    
+    // Scroll to the task element
+    setTimeout(() => {
+      const element = document.getElementById(`task-${taskId}`);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        // Add a brief highlight effect
+        element.classList.add('ring-2', 'ring-orange-300');
+        setTimeout(() => {
+          element.classList.remove('ring-2', 'ring-orange-300');
+        }, 1500);
+      }
+    }, 50);
+  };
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-[#FDFCF8] flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3 text-stone-400">
+          <Loader2 size={24} className="animate-spin" />
+          <span className="text-sm">Loading your tasks...</span>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#FDFCF8] text-stone-700 font-sans selection:bg-orange-100">
       <div className="max-w-md mx-auto min-h-screen flex flex-col relative bg-white/50 backdrop-blur-3xl shadow-[0_0_50px_-10px_rgba(0,0,0,0.02)]">
         
+        {/* App Menu (Side Panel) */}
+        <AppMenu isOpen={isMenuOpen} onClose={() => setIsMenuOpen(false)} />
+        
         {/* Header */}
-        <header className="pt-10 px-7 pb-4 flex justify-between items-end">
-          <div>
-            <div className="text-[11px] font-medium tracking-wider text-stone-400 uppercase mb-1 font-heading italic opacity-80">
-              {formattedDate}
-            </div>
-            <h1 className="text-3xl font-medium tracking-tight flex items-center gap-2 text-orange-400 font-heading">
-              Kino
-            </h1>
-          </div>
-          
-          <div 
-            className="w-7 h-7 rounded-full bg-white border border-stone-100 shadow-sm flex items-center justify-center text-stone-400 cursor-help transition-all hover:scale-105"
-            title="Kino is active and listening"
-          >
-            <div className="w-1.5 h-1.5 rounded-full bg-emerald-400/60 animate-pulse"></div>
-          </div>
-        </header>
+        <AppHeader 
+          onMenuOpen={() => setIsMenuOpen(true)} 
+          isAIOnline={isAIOnline}
+        />
 
-        <main className="flex-1 px-5 overflow-y-auto pb-24 scrollbar-hide font-body">
+        {/* Scrollable Content Area */}
+        <main className="flex-1 px-5 overflow-y-auto scrollbar-hide font-body pb-44">
           
           {activeTab === 'focus' ? ( 
             <>
-              {/* Input Area */}
-              <div className="mb-8 relative group mt-2 z-20">
-                <form onSubmit={handleAddTask} className="relative">
-                  <input
-                    type="text"
-                    value={inputText}
-                    onChange={(e) => setInputText(e.target.value)}
-                    onFocus={() => setIsInputFocused(true)}
-                    onBlur={() => {
-                      // Delay blur to allow clicking on the date picker
-                      setTimeout(() => setIsInputFocused(false), 200);
-                    }}
-                    placeholder="What's on your mind?"
-                    className="w-full bg-transparent text-[16px] font-normal placeholder:text-stone-300 placeholder:font-light border-b border-stone-200 py-3 pr-16 focus:outline-none focus:border-orange-300 transition-colors font-body text-stone-700"
-                  />
-                  
-                  <div className="absolute right-0 top-3 flex items-center gap-3">
-                    {/* Date Trigger in Input */}
-                    {(isInputFocused || inputDueDate) && (
-                      <div className="relative">
-                         <button
-                           type="button"
-                           onClick={() => setShowInputDatePicker(!showInputDatePicker)}
-                           className={`transition-colors ${inputDueDate ? 'text-orange-400' : 'text-stone-300 hover:text-stone-500'}`}
-                         >
-                           <Calendar size={18} strokeWidth={inputDueDate ? 2 : 1.5} />
-                         </button>
-                         
-                         {/* Quick Input Date Picker Popover */}
-                         {showInputDatePicker && (
-                           <div className="absolute top-full right-0 mt-2 bg-white rounded-xl shadow-xl border border-stone-100 p-2 min-w-[140px] z-50 flex flex-col gap-1 animate-in fade-in zoom-in-95 duration-200">
-                              <button type="button" onClick={() => setInputDateQuick('today')} className="text-left px-3 py-2 text-[13px] text-stone-600 hover:bg-stone-50 rounded-lg transition-colors">Today</button>
-                              <button type="button" onClick={() => setInputDateQuick('tomorrow')} className="text-left px-3 py-2 text-[13px] text-stone-600 hover:bg-stone-50 rounded-lg transition-colors">Tomorrow</button>
-                              <button type="button" onClick={() => setInputDateQuick('this-weekend')} className="text-left px-3 py-2 text-[13px] text-stone-600 hover:bg-stone-50 rounded-lg transition-colors">This Weekend</button>
-                              <button type="button" onClick={() => setInputDateQuick('next-week')} className="text-left px-3 py-2 text-[13px] text-stone-600 hover:bg-stone-50 rounded-lg transition-colors">Next Week</button>
-                              
-                              <div className="h-px bg-stone-100 my-0.5"></div>
-                              
-                              <div className="relative">
-                                 <input 
-                                    type="date" 
-                                    className="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-10"
-                                    onChange={(e) => setInputDateQuick('custom', e.target.value)}
-                                 />
-                                 <button type="button" className="w-full text-left px-3 py-2 text-[13px] text-stone-600 hover:bg-stone-50 rounded-lg transition-colors flex justify-between items-center">
-                                   <span>Pick Date...</span>
-                                   <Calendar size={10} className="opacity-50" />
-                                 </button>
-                               </div>
-                           </div>
-                         )}
-                      </div>
-                    )}
+              {/* Today's Focus (MIT) */}
+              <TodaysFocus 
+                tasks={focusedTasks}
+                onToggleComplete={handleToggleTask}
+                onRemoveFocus={handleToggleFocused}
+                onTaskClick={handleFocusTaskClick}
+              />
 
-                    <button 
-                      type="submit" 
-                      className={`text-stone-300 hover:text-orange-400 transition-colors ${inputText ? 'opacity-100' : 'opacity-0'}`}
-                    >
-                      <Plus size={22} strokeWidth={2} />
-                    </button>
-                  </div>
-                </form>
-                
-                {isAiThinking ? (
-                  <div className="absolute top-14 left-0 text-[11px] text-stone-400 flex items-center gap-1.5 animate-pulse mt-1">
-                    <Sparkles size={10} className="text-orange-400"/>
-                    <span className="font-medium tracking-wide">Decomposing task...</span>
-                  </div>
-                ) : (
-                  <div className="mt-2 text-[11px] text-stone-300 flex flex-wrap gap-2 font-light items-center min-h-[20px]">
-                     {inputDueDate && (
-                       <span className="text-orange-400 bg-orange-50 px-2 py-0.5 rounded-full flex items-center gap-1">
-                         <Calendar size={10} /> 
-                         {new Date(inputDueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                         <button onClick={() => setInputDueDate(null)} className="hover:text-orange-600 ml-1">×</button>
-                       </span>
-                     )}
-                     {!inputText && !inputDueDate && (
-                       <>
-                        <span className="mr-0.5">Try:</span>
-                        <button 
-                            onClick={() => setInputText("Plan a 3-day trip to Kyoto")}
-                            className="hover:text-stone-500 transition-colors border-b border-stone-100 hover:border-stone-300 pb-0.5"
+              {/* Progressive Disclosure: Reflection Nudge */}
+              <AnimatePresence>
+                {tasksCompletedCount >= 5 && !hasSeenReflectionIntro && !reflectionNudgeDismissed && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    transition={{ duration: 0.3 }}
+                    className="mb-4"
+                  >
+                    <div className="bg-gradient-to-r from-orange-50 to-amber-50/50 border border-orange-100/50 rounded-xl px-4 py-3 flex items-center gap-3">
+                      <Moon size={16} className="text-orange-400 shrink-0" />
+                      <p className="text-[13px] text-stone-600 flex-1">
+                        You've been making good progress. Want to take a moment to reflect?
+                      </p>
+                      <div className="flex gap-2 shrink-0">
+                        <button
+                          onClick={() => setActiveTab('reflection')}
+                          className="text-[12px] text-orange-500 hover:text-orange-600 font-medium"
                         >
-                          "Plan trip to Kyoto"
+                          Try it
                         </button>
-                       </>
-                     )}
-                  </div>
+                        <button
+                          onClick={() => setReflectionNudgeDismissed(true)}
+                          className="text-[12px] text-stone-400 hover:text-stone-500"
+                        >
+                          Later
+                        </button>
+                      </div>
+                    </div>
+                  </motion.div>
                 )}
-              </div>
+              </AnimatePresence>
+
+              {/* Empty State - shown when no incomplete tasks */}
+              {incompleteTasks.length === 0 && (
+                <EmptyState 
+                  onAddTask={focusInput}
+                  hasCompletedTasks={todayCompletedTasks.length > 0}
+                />
+              )}
 
               {/* Matrix-based Task List with Drag & Drop */}
               <div className="space-y-5">
@@ -502,97 +370,101 @@ const KinoApp = () => {
                   title="Do Now" 
                   icon={<Zap size={12} className="text-rose-400" />} 
                   tasks={groupedTasks['Do First']} 
-                  tag="requires attention"
+                  tag="act now"
                   quadrantId="Do First"
                   handleDrop={handleDrop}
                   handleDragOver={handleDragOver}
                   draggedTaskId={draggedTaskId}
-                  toggleTask={toggleTask}
-                  toggleSuggestions={toggleSuggestions}
+                  toggleTask={handleToggleTask}
+                  toggleSuggestions={handleToggleSuggestions}
                   handleDragStart={handleDragStart}
                   handleAddAllSuggestions={handleAddAllSuggestions}
                   handleAddManualSubTask={handleAddManualSubTask}
-                  toggleSubTask={toggleSubTask}
-                  deleteSubTask={deleteSubTask}
+                  toggleSubTask={handleToggleSubTask}
+                  deleteSubTask={handleDeleteSubTask}
                   handlePinTask={handlePinTask}
                   handleDeleteTask={handleDeleteTask}
                   handleUpdateDate={handleUpdateDate}
+                  handleToggleFocused={handleToggleFocused}
                 />
 
                 <QuadrantSection 
                   title="Plan & Focus" 
                   icon={<Calendar size={12} className="text-emerald-500" />} 
                   tasks={groupedTasks['Schedule']} 
-                  tag="high value"
+                  tag="plan ahead"
                   quadrantId="Schedule"
                   handleDrop={handleDrop}
                   handleDragOver={handleDragOver}
                   draggedTaskId={draggedTaskId}
-                  toggleTask={toggleTask}
-                  toggleSuggestions={toggleSuggestions}
+                  toggleTask={handleToggleTask}
+                  toggleSuggestions={handleToggleSuggestions}
                   handleDragStart={handleDragStart}
                   handleAddAllSuggestions={handleAddAllSuggestions}
                   handleAddManualSubTask={handleAddManualSubTask}
-                  toggleSubTask={toggleSubTask}
-                  deleteSubTask={deleteSubTask}
+                  toggleSubTask={handleToggleSubTask}
+                  deleteSubTask={handleDeleteSubTask}
                   handlePinTask={handlePinTask}
                   handleDeleteTask={handleDeleteTask}
                   handleUpdateDate={handleUpdateDate}
+                  handleToggleFocused={handleToggleFocused}
                 />
 
                 <QuadrantSection 
                   title="Quick Tasks" 
                   icon={<Clock size={12} className="text-orange-400" />} 
                   tasks={groupedTasks['Quick Tasks']} 
-                  tag="easy wins"
+                  tag="quick wins"
                   quadrantId="Quick Tasks"
                   handleDrop={handleDrop}
                   handleDragOver={handleDragOver}
                   draggedTaskId={draggedTaskId}
-                  toggleTask={toggleTask}
-                  toggleSuggestions={toggleSuggestions}
+                  toggleTask={handleToggleTask}
+                  toggleSuggestions={handleToggleSuggestions}
                   handleDragStart={handleDragStart}
                   handleAddAllSuggestions={handleAddAllSuggestions}
                   handleAddManualSubTask={handleAddManualSubTask}
-                  toggleSubTask={toggleSubTask}
-                  deleteSubTask={deleteSubTask}
+                  toggleSubTask={handleToggleSubTask}
+                  deleteSubTask={handleDeleteSubTask}
                   handlePinTask={handlePinTask}
                   handleDeleteTask={handleDeleteTask}
                   handleUpdateDate={handleUpdateDate}
+                  handleToggleFocused={handleToggleFocused}
                 />
 
                 <QuadrantSection 
                   title="For Later" 
                   icon={<Coffee size={12} className="text-stone-400" />} 
                   tasks={groupedTasks['Later']} 
-                  tag="no rush"
+                  tag="someday"
                   quadrantId="Later"
                   isFaded={true}
                   handleDrop={handleDrop}
                   handleDragOver={handleDragOver}
                   draggedTaskId={draggedTaskId}
-                  toggleTask={toggleTask}
-                  toggleSuggestions={toggleSuggestions}
+                  toggleTask={handleToggleTask}
+                  toggleSuggestions={handleToggleSuggestions}
                   handleDragStart={handleDragStart}
                   handleAddAllSuggestions={handleAddAllSuggestions}
                   handleAddManualSubTask={handleAddManualSubTask}
-                  toggleSubTask={toggleSubTask}
-                  deleteSubTask={deleteSubTask}
+                  toggleSubTask={handleToggleSubTask}
+                  deleteSubTask={handleDeleteSubTask}
                   handlePinTask={handlePinTask}
                   handleDeleteTask={handleDeleteTask}
                   handleUpdateDate={handleUpdateDate}
+                  handleToggleFocused={handleToggleFocused}
                 />
 
-                {/* Completed */}
-                {tasks.some(t => t.completed) && (
+                {/* Done Today - only show today's completed tasks */}
+                {todayCompletedTasks.length > 0 && (
                   <section className="pt-4 opacity-40 hover:opacity-100 transition-opacity duration-500 mt-6 pb-8">
-                     <h3 className="text-[11px] font-semibold text-stone-300 uppercase tracking-widest mb-2 pl-1 font-heading">
-                      Done
+                    <h3 className="text-[11px] font-semibold text-stone-300 uppercase tracking-widest mb-2 pl-1 font-heading">
+                      Done today ({todayCompletedTasks.length})
                     </h3>
                     <div className="space-y-2">
-                      {tasks.filter(t => t.completed).map(task => (
+                      {todayCompletedTasks.slice(0, 5).map(task => (
                         <div key={task.id} className="flex items-center gap-3 pl-2 group py-1">
-                           <button onClick={() => toggleTask(task.id)} className="text-stone-300 group-hover:text-stone-400 transition-colors">
+                          <button onClick={() => handleToggleTask(task.id)} className="text-stone-300 group-hover:text-stone-400 transition-colors">
                             <CheckCircle2 size={16} strokeWidth={1.5} />
                           </button>
                           <span className="text-stone-300 line-through decoration-stone-200 text-[14px] font-normal">
@@ -600,6 +472,11 @@ const KinoApp = () => {
                           </span>
                         </div>
                       ))}
+                      {todayCompletedTasks.length > 5 && (
+                        <p className="text-[11px] text-stone-300 pl-2 mt-2">
+                          +{todayCompletedTasks.length - 5} more
+                        </p>
+                      )}
                     </div>
                   </section>
                 )}
@@ -611,6 +488,103 @@ const KinoApp = () => {
           )}
 
         </main>
+
+        {/* Fixed Bottom Input Area - Only show on Focus tab */}
+        {activeTab === 'focus' && (
+          <div className="absolute bottom-20 left-0 right-0 bg-white/95 backdrop-blur-xl border-t border-stone-100/50 px-5 py-4 z-10">
+            <form onSubmit={handleAddTask} className="relative">
+              <input
+                ref={inputRef}
+                type="text"
+                value={inputText}
+                onChange={(e) => setInputText(e.target.value)}
+                onFocus={() => setIsInputFocused(true)}
+                onBlur={() => {
+                  setTimeout(() => setIsInputFocused(false), 200);
+                }}
+                placeholder="What's on your mind?"
+                className="w-full bg-transparent text-[16px] font-normal placeholder:text-stone-300 placeholder:font-light border-b border-stone-200 py-3 pr-16 focus:outline-none focus:border-orange-300 transition-colors font-body text-stone-700"
+              />
+              
+              <div className="absolute right-0 top-3 flex items-center gap-3">
+                {/* Date Trigger in Input */}
+                {(isInputFocused || inputDueDate) && (
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() => setShowInputDatePicker(!showInputDatePicker)}
+                      className={`transition-colors ${inputDueDate ? 'text-orange-400' : 'text-stone-300 hover:text-stone-500'}`}
+                    >
+                      <Calendar size={18} strokeWidth={inputDueDate ? 2 : 1.5} />
+                    </button>
+                    
+                    {/* Quick Input Date Picker Popover */}
+                    {showInputDatePicker && (
+                      <div className="absolute bottom-full right-0 mb-2 bg-white rounded-xl shadow-xl border border-stone-100 p-2 min-w-[140px] z-50 flex flex-col gap-1 animate-in fade-in zoom-in-95 duration-200">
+                        <button type="button" onClick={() => setInputDateQuick('today')} className="text-left px-3 py-2 text-[13px] text-stone-600 hover:bg-stone-50 rounded-lg transition-colors">Today</button>
+                        <button type="button" onClick={() => setInputDateQuick('tomorrow')} className="text-left px-3 py-2 text-[13px] text-stone-600 hover:bg-stone-50 rounded-lg transition-colors">Tomorrow</button>
+                        <button type="button" onClick={() => setInputDateQuick('this-weekend')} className="text-left px-3 py-2 text-[13px] text-stone-600 hover:bg-stone-50 rounded-lg transition-colors">This Weekend</button>
+                        <button type="button" onClick={() => setInputDateQuick('next-week')} className="text-left px-3 py-2 text-[13px] text-stone-600 hover:bg-stone-50 rounded-lg transition-colors">Next Week</button>
+                        
+                        <div className="h-px bg-stone-100 my-0.5"></div>
+                        
+                        <div className="relative">
+                          <input 
+                            type="date" 
+                            className="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-10"
+                            onChange={(e) => setInputDateQuick('custom', e.target.value)}
+                          />
+                          <button type="button" className="w-full text-left px-3 py-2 text-[13px] text-stone-600 hover:bg-stone-50 rounded-lg transition-colors flex justify-between items-center">
+                            <span>Pick Date...</span>
+                            <Calendar size={10} className="opacity-50" />
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                <button 
+                  type="submit" 
+                  className={`text-stone-300 hover:text-orange-400 transition-colors ${inputText ? 'opacity-100' : 'opacity-0'}`}
+                >
+                  <Plus size={22} strokeWidth={2} />
+                </button>
+              </div>
+            </form>
+            
+            {/* Input hints */}
+            <div className="mt-2 text-[11px] text-stone-300 flex flex-wrap gap-2 font-light items-center min-h-[20px]">
+              {isAiThinking ? (
+                <div className="flex items-center gap-1.5 animate-pulse text-stone-400">
+                  <Sparkles size={10} className="text-orange-400"/>
+                  <span className="font-medium tracking-wide">Decomposing task...</span>
+                </div>
+              ) : (
+                <>
+                  {inputDueDate && (
+                    <span className="text-orange-400 bg-orange-50 px-2 py-0.5 rounded-full flex items-center gap-1">
+                      <Calendar size={10} /> 
+                      {new Date(inputDueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                      <button onClick={() => setInputDueDate(null)} className="hover:text-orange-600 ml-1">×</button>
+                    </span>
+                  )}
+                  {!inputText && !inputDueDate && (
+                    <>
+                      <span className="mr-0.5">Try:</span>
+                      <button 
+                        onClick={() => setInputText("Plan a 3-day trip to Kyoto")}
+                        className="hover:text-stone-500 transition-colors border-b border-stone-100 hover:border-stone-300 pb-0.5"
+                      >
+                        "Plan trip to Kyoto"
+                      </button>
+                    </>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Nav */}
         <nav className="absolute bottom-0 w-full bg-white/90 backdrop-blur-xl border-t border-stone-100/50 pb-8 pt-5 px-12 flex justify-between items-center text-[10px] font-bold tracking-widest text-stone-300 uppercase font-heading z-10">
