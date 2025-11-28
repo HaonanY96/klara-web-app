@@ -1,29 +1,29 @@
 import React, { useState } from 'react';
 import { ChevronUp, ChevronDown } from 'lucide-react';
 import TaskItem from './TaskItem';
-import { Task } from '../page'; // Import Task type
+import type { TaskWithDetails } from '@/types';
 
 interface QuadrantSectionProps {
   title: string;
   icon: React.ReactNode;
-  tasks: Task[];
+  tasks: TaskWithDetails[];
   tag: string;
   quadrantId: string;
   isFaded?: boolean;
   handleDrop: (e: React.DragEvent, quadrantId: string) => void;
   handleDragOver: (e: React.DragEvent) => void;
-  draggedTaskId: number | string | null;
-  toggleTask: (id: number | string) => void;
-  toggleSuggestions: (id: number | string) => void;
-  handleDragStart: (e: React.DragEvent, id: number | string) => void;
-  handleAddAllSuggestions: (id: number | string) => void;
-  handleAddManualSubTask: (id: number | string, text: string) => void;
-  toggleSubTask: (taskId: number | string, subTaskId: number | string) => void;
-  deleteSubTask: (taskId: number | string, subTaskId: number | string) => void;
-  // New props
-  handlePinTask: (id: number | string) => void;
-  handleDeleteTask: (id: number | string) => void;
-  handleUpdateDate: (id: number | string, date: string | null) => void;
+  draggedTaskId: string | null;
+  toggleTask: (id: string) => void;
+  toggleSuggestions: (id: string) => void;
+  handleDragStart: (e: React.DragEvent, id: string) => void;
+  handleAddAllSuggestions: (id: string) => void;
+  handleAddManualSubTask: (id: string, text: string) => void;
+  toggleSubTask: (taskId: string, subTaskId: string) => void;
+  deleteSubTask: (taskId: string, subTaskId: string) => void;
+  handlePinTask: (id: string) => void;
+  handleDeleteTask: (id: string) => void;
+  handleUpdateDate: (id: string, date: string | null) => void;
+  handleToggleFocused?: (id: string) => void;
 }
 
 const QuadrantSection = ({ 
@@ -45,7 +45,8 @@ const QuadrantSection = ({
   deleteSubTask,
   handlePinTask,
   handleDeleteTask,
-  handleUpdateDate
+  handleUpdateDate,
+  handleToggleFocused
 }: QuadrantSectionProps) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
@@ -107,6 +108,7 @@ const QuadrantSection = ({
             handlePinTask={handlePinTask}
             handleDeleteTask={handleDeleteTask}
             handleUpdateDate={handleUpdateDate}
+            handleToggleFocused={handleToggleFocused}
           />
         ))}
       </div>
