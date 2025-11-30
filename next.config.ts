@@ -12,6 +12,8 @@ const withPWA = withPWAInit({
 const nextConfig: NextConfig = {
   /* Silence Turbopack warning when using PWA webpack config */
   turbopack: {},
+  /* Allow local network devices (e.g. phone) to access dev server */
+  allowedDevOrigins: ["192.168.1.*"],
 };
 
 export default withPWA(nextConfig);

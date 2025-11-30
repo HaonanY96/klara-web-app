@@ -17,11 +17,11 @@ const TodaysFocus = ({ tasks, onToggleComplete, onRemoveFocus, onTaskClick }: To
   return (
     <section className="mb-6">
       <div className="flex items-center gap-2 mb-3">
-        <Target size={14} className="text-orange-400" />
-        <h2 className="text-[12px] font-bold text-stone-700 uppercase tracking-wider font-heading">
+        <Target size={16} className="text-orange-400" />
+        <h2 className="text-[14px] font-bold text-stone-700 uppercase tracking-wider font-heading">
           Today's Focus
         </h2>
-        <span className="text-[10px] text-stone-400 font-medium">
+        <span className="text-[12px] text-stone-400 font-medium">
           {tasks.length}/3
         </span>
       </div>
@@ -36,7 +36,7 @@ const TodaysFocus = ({ tasks, onToggleComplete, onRemoveFocus, onTaskClick }: To
               onClick={() => onToggleComplete(task.id)}
               className="text-orange-300 hover:text-orange-500 transition-colors"
             >
-              <Circle size={18} strokeWidth={2} />
+              <Circle size={20} strokeWidth={2} />
             </button>
             
             <button 
@@ -48,25 +48,25 @@ const TodaysFocus = ({ tasks, onToggleComplete, onRemoveFocus, onTaskClick }: To
             
             {/* Progress indicator if has subtasks */}
             {task.subTasks.length > 0 && (
-              <span className="text-[10px] text-orange-400 font-medium">
+              <span className="text-[12px] text-orange-400 font-medium">
                 {task.subTasks.filter(st => st.completed).length}/{task.subTasks.length}
               </span>
             )}
             
             <button 
               onClick={() => onRemoveFocus(task.id)}
-              className="opacity-0 group-hover:opacity-100 text-stone-300 hover:text-stone-500 transition-all"
+              className="text-stone-300 hover:text-stone-500 transition-all md:opacity-0 md:group-hover:opacity-100"
               title="Remove from focus"
             >
-              <X size={14} />
+              <X size={16} />
             </button>
           </div>
         ))}
       </div>
       
       {tasks.length < 3 && (
-        <p className="text-[11px] text-stone-300 mt-2 pl-1 italic">
-          Tap ⭐ on any task to add it here (max 3)
+        <p className="text-[13px] text-stone-300 mt-2 pl-1 italic">
+          Long press any task to add it here (max 3)
         </p>
       )}
     </section>

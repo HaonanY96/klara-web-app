@@ -4,12 +4,13 @@
  * Frontend client for calling AI API routes.
  */
 
-import type { ToneStyle } from '@/types';
+import type { ToneStyle, InferredStateType } from '@/types';
 
 interface SuggestSubtasksParams {
   taskText: string;
   existingSubtasks?: string[];
   toneStyle?: ToneStyle;
+  inferredState?: InferredStateType;
 }
 
 interface SuggestSubtasksResult {
@@ -34,6 +35,7 @@ export async function requestAISuggestions(
         taskText: params.taskText,
         existingSubtasks: params.existingSubtasks,
         toneStyle: params.toneStyle,
+        inferredState: params.inferredState,
       }),
     });
 

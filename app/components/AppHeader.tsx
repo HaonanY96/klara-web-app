@@ -31,7 +31,7 @@ const AppHeader = ({ onMenuOpen, isAIOnline = true }: AppHeaderProps) => {
   }, []);
 
   return (
-    <header className="pt-10 px-5 pb-4">
+    <header className="fixed top-0 left-0 right-0 z-30 bg-white/95 backdrop-blur-xl px-5 pb-4 max-w-md mx-auto" style={{ paddingTop: 'calc(2.5rem + var(--safe-area-inset-top))' }}>
       {/* Top bar with menu and title */}
       <div className="flex items-center justify-between mb-1">
         {/* Menu button */}

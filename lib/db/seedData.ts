@@ -7,8 +7,7 @@
  */
 
 import type { Task, SubTask } from '@/types';
-
-const generateId = () => crypto.randomUUID();
+import { generateId } from '@/lib/utils';
 
 export interface SeedTask {
   text: string;

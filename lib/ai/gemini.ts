@@ -59,10 +59,64 @@ Tone: Minimal. Keep suggestions extremely brief.
 }
 
 /**
+ * Get state-aware context instructions for the AI
+ * Based on inferred user state from behavioral signals
+ */
+function getStateContextInstructions(inferredState?: string): string {
+  switch (inferredState) {
+    case 'energized':
+      return `
+User context: The user seems to be in a productive, energized state.
+- They're likely ready to tackle more substantial steps
+- Can suggest slightly more ambitious sub-tasks
+- Maintain momentum with clear action items`;
+    case 'low':
+      return `
+User context: The user appears to have low energy right now.
+- Suggest smaller, more manageable steps
+- Each step should feel very achievable (3-5 minutes)
+- Prioritize the easiest entry points first`;
+    case 'tired':
+      return `
+User context: The user is working late/appears tired.
+- Keep steps extremely light and simple
+- Suggest just 2-3 essential steps
+- Focus on what can realistically be done tonight`;
+    case 'avoidant':
+      return `
+User context: This task may feel overwhelming to the user.
+- Break it down into the smallest possible steps
+- Make the first step incredibly easy to start
+- Remove any friction or complexity`;
+    case 'needs_breakdown':
+      return `
+User context: This task is complex and needs clear structure.
+- Provide comprehensive but clear breakdown
+- Ensure logical ordering of steps
+- Make dependencies between steps clear`;
+    case 'uncertain':
+      return `
+User context: The user seems uncertain about priorities.
+- Make suggestions very concrete and specific
+- Focus on clarity over comprehensiveness
+- Help them see a clear path forward`;
+    case 'disengaged':
+      return `
+User context: The user is returning after some time away.
+- Start with a very gentle, welcoming first step
+- Keep the list short (2-3 steps max)
+- Make re-engagement feel easy`;
+    case 'okay':
+    default:
+      return ''; // Default state: no special context
+  }
+}
+
+/**
  * Build the prompt for subtask suggestions
  */
 function buildPrompt(request: SuggestSubtasksRequest): string {
-  const { taskText, existingSubtasks, toneStyle } = request;
+  const { taskText, existingSubtasks, toneStyle, inferredState } = request;
   
   let prompt = `You are a task decomposition assistant. The user has a task: "${taskText}"
 
@@ -70,6 +124,14 @@ function buildPrompt(request: SuggestSubtasksRequest): string {
 
   if (existingSubtasks && existingSubtasks.length > 0) {
     prompt += `The user already has these sub-tasks: ${existingSubtasks.join(', ')}
+
+`;
+  }
+
+  // Add state-aware context instructions if available
+  const stateInstructions = getStateContextInstructions(inferredState);
+  if (stateInstructions) {
+    prompt += `${stateInstructions}
 
 `;
   }

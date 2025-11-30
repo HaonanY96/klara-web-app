@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { 
   Sparkles, 
   CheckCircle2, 
@@ -20,9 +20,11 @@ import EmptyState from './components/EmptyState';
 import AppHeader from './components/AppHeader';
 import AppMenu from './components/AppMenu';
 import { useToast } from './components/Toast';
-import { useTasks, useUserPreferences } from '@/lib/hooks';
+import { useTasks, useUserPreferences, useStateInference } from '@/lib/hooks';
 import { requestAISuggestions, shouldSuggestSubtasks } from '@/lib/services/aiClient';
+import { detectAllNudges } from '@/lib/services/nudgeService';
 import { motion, AnimatePresence } from 'motion/react';
+import type { NudgeAction } from '@/types';
 
 const KinoApp = () => {
   const { showToast } = useToast();
@@ -36,9 +38,12 @@ const KinoApp = () => {
   const [isInputFocused, setIsInputFocused] = useState(false);
   const [inputDueDate, setInputDueDate] = useState<string | null>(null);
   const [showInputDatePicker, setShowInputDatePicker] = useState(false);
+  const [isInputHidden, setIsInputHidden] = useState(false);
   
   // Input ref for focusing
   const inputRef = useRef<HTMLInputElement>(null);
+  const mainScrollRef = useRef<HTMLDivElement>(null);
+  const lastScrollTopRef = useRef(0);
 
   // AI Online status (for now, always true - can be connected to actual API status later)
   const [isAIOnline] = useState(true);
@@ -58,6 +63,7 @@ const KinoApp = () => {
     updateQuadrant,
     updateDueDate,
     deleteTask,
+    updateTaskText,
     addSubTask,
     addAllSubTasks,
     toggleSubTask,
@@ -73,8 +79,106 @@ const KinoApp = () => {
     toneStyle,
   } = useUserPreferences();
 
+  // State inference for context-aware AI suggestions
+  const { inferredState, stateDescription } = useStateInference(tasks);
+
+  // Nudge detection - memoized to avoid recalculating on every render
+  const nudgeMap = useMemo(() => {
+    return detectAllNudges(incompleteTasks);
+  }, [incompleteTasks]);
+
+  // Nudge action handler
+  const handleNudgeAction = useCallback((taskId: string, action: NudgeAction) => {
+    switch (action) {
+      case 'set_new_date':
+        // Expand the task to show date picker
+        const task = tasks.find(t => t.id === taskId);
+        if (task && !task.showSuggestions) {
+          toggleShowSuggestions(taskId);
+        }
+        break;
+      case 'break_down':
+        // Request AI suggestions for this task
+        const taskToBreak = tasks.find(t => t.id === taskId);
+        if (taskToBreak) {
+          setIsAiThinking(true);
+          requestAISuggestions({
+            taskText: taskToBreak.text,
+            toneStyle,
+            inferredState: inferredState?.state,
+          }).then(async (aiResult) => {
+            if (aiResult.success && aiResult.suggestions.length > 0) {
+              await addAllSubTasks(taskId, aiResult.suggestions);
+            }
+            setIsAiThinking(false);
+          });
+        }
+        break;
+      case 'let_go':
+        // Delete the task
+        deleteTask(taskId);
+        showToast('Task removed', 'info');
+        break;
+      case 'show_less':
+        // TODO: Implement feedback learning (V1.5)
+        showToast('Got it, we\'ll show fewer of these', 'info');
+        break;
+      case 'dismiss':
+        // Just close the card (handled by component)
+        break;
+    }
+  }, [tasks, toneStyle, inferredState, toggleShowSuggestions, addAllSubTasks, deleteTask, showToast]);
+
+  // Nudge dismiss handler
+  const handleNudgeDismiss = useCallback((taskId: string) => {
+    // For now, just close the expanded view
+    // In V1.5, we'll track dismissals for feedback learning
+  }, []);
+
+  const handleEditTask = useCallback(async (taskId: string) => {
+    const task = tasks.find(t => t.id === taskId);
+    if (!task) return;
+    const nextText = window.prompt('Edit task', task.text);
+    if (nextText === null) return;
+    const trimmed = nextText.trim();
+    if (!trimmed || trimmed === task.text) return;
+    await updateTaskText(taskId, trimmed);
+  }, [tasks, updateTaskText]);
+
   // State for dismissing the reflection nudge
   const [reflectionNudgeDismissed, setReflectionNudgeDismissed] = useState(false);
+
+  useEffect(() => {
+    const container = mainScrollRef.current;
+    if (!container) return;
+
+    let ticking = false;
+    const handleScroll = () => {
+      const current = container.scrollTop;
+      const delta = current - lastScrollTopRef.current;
+      if (Math.abs(delta) > 20) {
+        if (delta > 0 && current > 40) {
+          setIsInputHidden(true);
+        } else if (delta < 0 || current < 80) {
+          setIsInputHidden(false);
+        }
+        lastScrollTopRef.current = current;
+      }
+      ticking = false;
+    };
+
+    const onScroll = () => {
+      if (!ticking) {
+        window.requestAnimationFrame(handleScroll);
+        ticking = true;
+      }
+    };
+
+    container.addEventListener('scroll', onScroll, { passive: true });
+    return () => {
+      container.removeEventListener('scroll', onScroll);
+    };
+  }, [activeTab]);
 
   const handleAddTask = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -116,6 +220,7 @@ const KinoApp = () => {
       const aiResult = await requestAISuggestions({ 
         taskText: inputText,
         toneStyle,
+        inferredState: inferredState?.state,
       });
       
       await addTask(inputText, {
@@ -297,19 +402,22 @@ const KinoApp = () => {
 
   return (
     <div className="min-h-screen bg-[#FDFCF8] text-stone-700 font-sans selection:bg-orange-100">
-      <div className="max-w-md mx-auto min-h-screen flex flex-col relative bg-white/50 backdrop-blur-3xl shadow-[0_0_50px_-10px_rgba(0,0,0,0.02)]">
-        
-        {/* App Menu (Side Panel) */}
-        <AppMenu isOpen={isMenuOpen} onClose={() => setIsMenuOpen(false)} />
-        
-        {/* Header */}
-        <AppHeader 
-          onMenuOpen={() => setIsMenuOpen(true)} 
-          isAIOnline={isAIOnline}
-        />
+      {/* App Menu (Side Panel) */}
+      <AppMenu isOpen={isMenuOpen} onClose={() => setIsMenuOpen(false)} />
+      
+      {/* Header */}
+      <AppHeader 
+        onMenuOpen={() => setIsMenuOpen(true)} 
+        isAIOnline={isAIOnline}
+      />
 
-        {/* Scrollable Content Area */}
-        <main className="flex-1 px-5 overflow-y-auto scrollbar-hide font-body pb-44">
+      <div className="max-w-md mx-auto min-h-screen flex flex-col bg-white/50 backdrop-blur-3xl shadow-[0_0_50px_-10px_rgba(0,0,0,0.02)]">
+        {/* Scrollable Content Area - with padding for fixed header and footer */}
+        <main
+          ref={mainScrollRef}
+          className={`flex-1 px-5 overflow-y-auto scrollbar-hide font-body pt-32 ${activeTab === 'focus' ? 'pb-48' : 'pb-24'}`}
+          style={{ scrollPaddingBottom: activeTab === 'focus' ? '240px' : '100px' }}
+        >
           
           {activeTab === 'focus' ? ( 
             <>
@@ -331,7 +439,7 @@ const KinoApp = () => {
                     transition={{ duration: 0.3 }}
                     className="mb-4"
                   >
-                    <div className="bg-gradient-to-r from-orange-50 to-amber-50/50 border border-orange-100/50 rounded-xl px-4 py-3 flex items-center gap-3">
+                    <div className="bg-linear-to-r from-orange-50 to-amber-50/50 border border-orange-100/50 rounded-xl px-4 py-3 flex items-center gap-3">
                       <Moon size={16} className="text-orange-400 shrink-0" />
                       <p className="text-[13px] text-stone-600 flex-1">
                         You've been making good progress. Want to take a moment to reflect?
@@ -386,6 +494,10 @@ const KinoApp = () => {
                   handleDeleteTask={handleDeleteTask}
                   handleUpdateDate={handleUpdateDate}
                   handleToggleFocused={handleToggleFocused}
+                  handleEditTask={handleEditTask}
+                  nudgeMap={nudgeMap}
+                  onNudgeAction={handleNudgeAction}
+                  onNudgeDismiss={handleNudgeDismiss}
                 />
 
                 <QuadrantSection 
@@ -408,6 +520,10 @@ const KinoApp = () => {
                   handleDeleteTask={handleDeleteTask}
                   handleUpdateDate={handleUpdateDate}
                   handleToggleFocused={handleToggleFocused}
+                  handleEditTask={handleEditTask}
+                  nudgeMap={nudgeMap}
+                  onNudgeAction={handleNudgeAction}
+                  onNudgeDismiss={handleNudgeDismiss}
                 />
 
                 <QuadrantSection 
@@ -430,6 +546,10 @@ const KinoApp = () => {
                   handleDeleteTask={handleDeleteTask}
                   handleUpdateDate={handleUpdateDate}
                   handleToggleFocused={handleToggleFocused}
+                  handleEditTask={handleEditTask}
+                  nudgeMap={nudgeMap}
+                  onNudgeAction={handleNudgeAction}
+                  onNudgeDismiss={handleNudgeDismiss}
                 />
 
                 <QuadrantSection 
@@ -453,6 +573,10 @@ const KinoApp = () => {
                   handleDeleteTask={handleDeleteTask}
                   handleUpdateDate={handleUpdateDate}
                   handleToggleFocused={handleToggleFocused}
+                  handleEditTask={handleEditTask}
+                  nudgeMap={nudgeMap}
+                  onNudgeAction={handleNudgeAction}
+                  onNudgeDismiss={handleNudgeDismiss}
                 />
 
                 {/* Done Today - only show today's completed tasks */}
@@ -488,124 +612,127 @@ const KinoApp = () => {
           )}
 
         </main>
-
-        {/* Fixed Bottom Input Area - Only show on Focus tab */}
-        {activeTab === 'focus' && (
-          <div className="absolute bottom-20 left-0 right-0 bg-white/95 backdrop-blur-xl border-t border-stone-100/50 px-5 py-4 z-10">
-            <form onSubmit={handleAddTask} className="relative">
-              <input
-                ref={inputRef}
-                type="text"
-                value={inputText}
-                onChange={(e) => setInputText(e.target.value)}
-                onFocus={() => setIsInputFocused(true)}
-                onBlur={() => {
-                  setTimeout(() => setIsInputFocused(false), 200);
-                }}
-                placeholder="What's on your mind?"
-                className="w-full bg-transparent text-[16px] font-normal placeholder:text-stone-300 placeholder:font-light border-b border-stone-200 py-3 pr-16 focus:outline-none focus:border-orange-300 transition-colors font-body text-stone-700"
-              />
-              
-              <div className="absolute right-0 top-3 flex items-center gap-3">
-                {/* Date Trigger in Input */}
-                {(isInputFocused || inputDueDate) && (
-                  <div className="relative">
-                    <button
-                      type="button"
-                      onClick={() => setShowInputDatePicker(!showInputDatePicker)}
-                      className={`transition-colors ${inputDueDate ? 'text-orange-400' : 'text-stone-300 hover:text-stone-500'}`}
-                    >
-                      <Calendar size={18} strokeWidth={inputDueDate ? 2 : 1.5} />
-                    </button>
-                    
-                    {/* Quick Input Date Picker Popover */}
-                    {showInputDatePicker && (
-                      <div className="absolute bottom-full right-0 mb-2 bg-white rounded-xl shadow-xl border border-stone-100 p-2 min-w-[140px] z-50 flex flex-col gap-1 animate-in fade-in zoom-in-95 duration-200">
-                        <button type="button" onClick={() => setInputDateQuick('today')} className="text-left px-3 py-2 text-[13px] text-stone-600 hover:bg-stone-50 rounded-lg transition-colors">Today</button>
-                        <button type="button" onClick={() => setInputDateQuick('tomorrow')} className="text-left px-3 py-2 text-[13px] text-stone-600 hover:bg-stone-50 rounded-lg transition-colors">Tomorrow</button>
-                        <button type="button" onClick={() => setInputDateQuick('this-weekend')} className="text-left px-3 py-2 text-[13px] text-stone-600 hover:bg-stone-50 rounded-lg transition-colors">This Weekend</button>
-                        <button type="button" onClick={() => setInputDateQuick('next-week')} className="text-left px-3 py-2 text-[13px] text-stone-600 hover:bg-stone-50 rounded-lg transition-colors">Next Week</button>
-                        
-                        <div className="h-px bg-stone-100 my-0.5"></div>
-                        
-                        <div className="relative">
-                          <input 
-                            type="date" 
-                            className="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-10"
-                            onChange={(e) => setInputDateQuick('custom', e.target.value)}
-                          />
-                          <button type="button" className="w-full text-left px-3 py-2 text-[13px] text-stone-600 hover:bg-stone-50 rounded-lg transition-colors flex justify-between items-center">
-                            <span>Pick Date...</span>
-                            <Calendar size={10} className="opacity-50" />
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                <button 
-                  type="submit" 
-                  className={`text-stone-300 hover:text-orange-400 transition-colors ${inputText ? 'opacity-100' : 'opacity-0'}`}
-                >
-                  <Plus size={22} strokeWidth={2} />
-                </button>
-              </div>
-            </form>
-            
-            {/* Input hints */}
-            <div className="mt-2 text-[11px] text-stone-300 flex flex-wrap gap-2 font-light items-center min-h-[20px]">
-              {isAiThinking ? (
-                <div className="flex items-center gap-1.5 animate-pulse text-stone-400">
-                  <Sparkles size={10} className="text-orange-400"/>
-                  <span className="font-medium tracking-wide">Decomposing task...</span>
-                </div>
-              ) : (
-                <>
-                  {inputDueDate && (
-                    <span className="text-orange-400 bg-orange-50 px-2 py-0.5 rounded-full flex items-center gap-1">
-                      <Calendar size={10} /> 
-                      {new Date(inputDueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                      <button onClick={() => setInputDueDate(null)} className="hover:text-orange-600 ml-1">×</button>
-                    </span>
-                  )}
-                  {!inputText && !inputDueDate && (
-                    <>
-                      <span className="mr-0.5">Try:</span>
-                      <button 
-                        onClick={() => setInputText("Plan a 3-day trip to Kyoto")}
-                        className="hover:text-stone-500 transition-colors border-b border-stone-100 hover:border-stone-300 pb-0.5"
-                      >
-                        "Plan trip to Kyoto"
-                      </button>
-                    </>
-                  )}
-                </>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Nav */}
-        <nav className="absolute bottom-0 w-full bg-white/90 backdrop-blur-xl border-t border-stone-100/50 pb-8 pt-5 px-12 flex justify-between items-center text-[10px] font-bold tracking-widest text-stone-300 uppercase font-heading z-10">
-          <button 
-            onClick={() => setActiveTab('focus')}
-            className={`flex flex-col items-center gap-1.5 transition-colors duration-300 ${activeTab === 'focus' ? 'text-stone-800' : 'hover:text-stone-500'}`}
-          >
-            <Sun size={18} strokeWidth={2} className={activeTab === 'focus' ? 'text-orange-400' : ''} />
-            <span>Focus</span>
-          </button>
-          
-          <button 
-            onClick={() => setActiveTab('reflection')}
-            className={`flex flex-col items-center gap-1.5 transition-colors duration-300 ${activeTab === 'reflection' ? 'text-stone-800' : 'hover:text-stone-500'}`}
-          >
-            <Moon size={18} strokeWidth={2} className={activeTab === 'reflection' ? 'text-orange-400' : ''} />
-            <span>Reflection</span>
-          </button>
-        </nav>
-
       </div>
+
+      {/* Fixed Bottom Input Area - Only show on Focus tab */}
+      {activeTab === 'focus' && (
+        <div className={`fixed bottom-16 left-1/2 -translate-x-1/2 w-full max-w-md bg-white/95 backdrop-blur-xl border-t border-stone-100/50 px-5 py-4 z-20 rounded-t-3xl shadow-[0_-10px_40px_-20px_rgba(0,0,0,0.2)] transition-transform duration-300 ${isInputHidden ? 'translate-y-[140%]' : 'translate-y-0'}`}>
+          <form onSubmit={handleAddTask} className="relative">
+            <input
+              ref={inputRef}
+              type="text"
+              value={inputText}
+              onChange={(e) => setInputText(e.target.value)}
+              onFocus={() => {
+                setIsInputFocused(true);
+                setIsInputHidden(false);
+              }}
+              onBlur={() => {
+                setTimeout(() => setIsInputFocused(false), 200);
+              }}
+              placeholder="What's on your mind?"
+              className="w-full bg-transparent text-[16px] font-normal placeholder:text-stone-300 placeholder:font-light border-b border-stone-200 py-3 pr-16 focus:outline-none focus:border-orange-300 transition-colors font-body text-stone-700"
+            />
+            
+            <div className="absolute right-0 top-3 flex items-center gap-3">
+              {/* Date Trigger in Input */}
+              {(isInputFocused || inputDueDate) && (
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setShowInputDatePicker(!showInputDatePicker)}
+                    className={`transition-colors ${inputDueDate ? 'text-orange-400' : 'text-stone-300 hover:text-stone-500'}`}
+                  >
+                    <Calendar size={18} strokeWidth={inputDueDate ? 2 : 1.5} />
+                  </button>
+                  
+                  {/* Quick Input Date Picker Popover */}
+                  {showInputDatePicker && (
+                    <div className="absolute bottom-full right-0 mb-2 bg-white rounded-xl shadow-xl border border-stone-100 p-2 min-w-[140px] z-50 flex flex-col gap-1 animate-in fade-in zoom-in-95 duration-200">
+                      <button type="button" onClick={() => setInputDateQuick('today')} className="text-left px-3 py-2 text-[13px] text-stone-600 hover:bg-stone-50 rounded-lg transition-colors">Today</button>
+                      <button type="button" onClick={() => setInputDateQuick('tomorrow')} className="text-left px-3 py-2 text-[13px] text-stone-600 hover:bg-stone-50 rounded-lg transition-colors">Tomorrow</button>
+                      <button type="button" onClick={() => setInputDateQuick('this-weekend')} className="text-left px-3 py-2 text-[13px] text-stone-600 hover:bg-stone-50 rounded-lg transition-colors">This Weekend</button>
+                      <button type="button" onClick={() => setInputDateQuick('next-week')} className="text-left px-3 py-2 text-[13px] text-stone-600 hover:bg-stone-50 rounded-lg transition-colors">Next Week</button>
+                      
+                      <div className="h-px bg-stone-100 my-0.5"></div>
+                      
+                      <div className="relative">
+                        <input 
+                          type="date" 
+                          className="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-10"
+                          onChange={(e) => setInputDateQuick('custom', e.target.value)}
+                        />
+                        <button type="button" className="w-full text-left px-3 py-2 text-[13px] text-stone-600 hover:bg-stone-50 rounded-lg transition-colors flex justify-between items-center">
+                          <span>Pick Date...</span>
+                          <Calendar size={10} className="opacity-50" />
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <button 
+                type="submit" 
+                className={`text-stone-300 hover:text-orange-400 transition-colors ${inputText ? 'opacity-100' : 'opacity-0'}`}
+              >
+                <Plus size={22} strokeWidth={2} />
+              </button>
+            </div>
+          </form>
+          
+          {/* Input hints */}
+          <div className="mt-2 text-[13px] text-stone-300 flex flex-wrap gap-2 font-light items-center min-h-[20px]">
+            {isAiThinking ? (
+              <div className="flex items-center gap-1.5 animate-pulse text-stone-400">
+                <Sparkles size={12} className="text-orange-400"/>
+                <span className="font-medium tracking-wide">Decomposing task...</span>
+              </div>
+            ) : (
+              <>
+                {inputDueDate && (
+                  <span className="text-orange-400 bg-orange-50 px-2 py-0.5 rounded-full flex items-center gap-1">
+                    <Calendar size={12} /> 
+                    {new Date(inputDueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                    <button onClick={() => setInputDueDate(null)} className="hover:text-orange-600 ml-1">×</button>
+                  </span>
+                )}
+                {!inputText && !inputDueDate && (
+                  <>
+                    <span className="mr-0.5">Try:</span>
+                    <button 
+                      onClick={() => setInputText("Plan a 3-day trip to Kyoto")}
+                      className="hover:text-stone-500 transition-colors border-b border-stone-100 hover:border-stone-300 pb-0.5"
+                    >
+                      "Plan trip to Kyoto"
+                    </button>
+                  </>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Nav */}
+      <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md bg-white/90 backdrop-blur-xl border-t border-stone-100/50 pt-4 pb-4 px-10 flex justify-center gap-24 items-center text-[12px] font-bold tracking-widest text-stone-300 uppercase font-heading z-20" style={{ paddingBottom: 'calc(1.5rem + var(--safe-area-inset-bottom))' }}>
+        <button 
+          onClick={() => setActiveTab('focus')}
+          className={`flex flex-col items-center gap-1.5 transition-colors duration-300 ${activeTab === 'focus' ? 'text-stone-800' : 'hover:text-stone-500'}`}
+        >
+          <Sun size={18} strokeWidth={2} className={activeTab === 'focus' ? 'text-orange-400' : ''} />
+          <span>Focus</span>
+        </button>
+        
+        <button 
+          onClick={() => setActiveTab('reflection')}
+          className={`flex flex-col items-center gap-1.5 transition-colors duration-300 ${activeTab === 'reflection' ? 'text-stone-800' : 'hover:text-stone-500'}`}
+        >
+          <Moon size={18} strokeWidth={2} className={activeTab === 'reflection' ? 'text-orange-400' : ''} />
+          <span>Reflection</span>
+        </button>
+      </nav>
+
     </div>
   );
 };

@@ -8,16 +8,10 @@
 import { getDb } from '../index';
 import type { Task, CreateTask, UpdateTask, QuadrantType, TaskWithDetails } from '@/types';
 import { getQuadrant } from '@/types';
+import { generateId } from '@/lib/utils';
 
 // Helper to get database instance
 const db = () => getDb();
-
-/**
- * Generate a unique ID
- */
-function generateId(): string {
-  return crypto.randomUUID();
-}
 
 /**
  * Get current ISO timestamp

@@ -15,19 +15,13 @@ import type {
   InferredUserState,
   DEFAULT_USER_PREFERENCES 
 } from '@/types';
+import { generateId } from '@/lib/utils';
 
 // Default preferences ID (singleton)
 const PREFERENCES_ID = 'default-user-preferences';
 
 // Helper to get database instance
 const db = () => getDb();
-
-/**
- * Generate a unique ID
- */
-function generateId(): string {
-  return crypto.randomUUID();
-}
 
 /**
  * Get current ISO timestamp

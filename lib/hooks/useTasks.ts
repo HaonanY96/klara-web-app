@@ -39,6 +39,7 @@ interface UseTasksReturn {
   updateQuadrant: (id: string, importance: 'high' | 'low', urgency: 'high' | 'low') => Promise<void>;
   updateDueDate: (id: string, dueDate: string | null) => Promise<void>;
   deleteTask: (id: string) => Promise<void>;
+  updateTaskText: (id: string, text: string) => Promise<void>;
   
   // SubTask Operations
   addSubTask: (taskId: string, text: string) => Promise<void>;
@@ -199,6 +200,11 @@ export function useTasks(): UseTasksReturn {
     setTasks(prev => prev.filter(t => t.id !== id));
   }, []);
 
+  const updateTaskText = useCallback(async (id: string, text: string) => {
+    await taskRepository.update({ id, text });
+    await loadTasks();
+  }, [loadTasks]);
+
   // SubTask Operations
   const addSubTask = useCallback(async (taskId: string, text: string) => {
     await subTaskRepository.create({
@@ -257,6 +263,7 @@ export function useTasks(): UseTasksReturn {
     updateQuadrant,
     updateDueDate,
     deleteTask,
+    updateTaskText,
     addSubTask,
     addAllSubTasks,
     toggleSubTask,

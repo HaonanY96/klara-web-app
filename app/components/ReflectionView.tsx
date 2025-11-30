@@ -235,12 +235,12 @@ const ReflectionView = () => {
         <div className="flex-1 pb-4">
           <div className="flex items-center justify-between gap-2 mb-1">
             <div className="flex items-center gap-2">
-              <span className="text-[11px] text-stone-400 font-medium">
+              <span className="text-[12px] text-stone-400 font-medium">
                 {formatTime(entry.recordedAt)}
               </span>
               {moodConfig && (
-                <div className={`flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-medium ${moodConfig.bg} ${moodConfig.color}`}>
-                  <moodConfig.icon size={10} fill={moodConfig.fill !== 'transparent' ? 'currentColor' : 'none'} />
+                <div className={`flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium ${moodConfig.bg} ${moodConfig.color}`}>
+                  <moodConfig.icon size={12} fill={moodConfig.fill !== 'transparent' ? 'currentColor' : 'none'} />
                   <span>{moodConfig.label}</span>
                 </div>
               )}
@@ -270,9 +270,9 @@ const ReflectionView = () => {
                   >
                     <button
                       onClick={() => handleEditStart(reflection.id, entry)}
-                      className="w-full flex items-center gap-2 px-3 py-2 text-[13px] text-stone-600 hover:bg-stone-50 transition-colors"
+                      className="w-full flex items-center gap-2 px-3 py-2 text-[14px] text-stone-600 hover:bg-stone-50 transition-colors"
                     >
-                      <Pencil size={14} />
+                      <Pencil size={15} />
                       Edit
                     </button>
                     <button
@@ -280,9 +280,9 @@ const ReflectionView = () => {
                         setDeleteConfirmId({ reflectionId: reflection.id, entryId: entry.id });
                         setActiveMenuId(null);
                       }}
-                      className="w-full flex items-center gap-2 px-3 py-2 text-[13px] text-rose-500 hover:bg-rose-50 transition-colors"
+                      className="w-full flex items-center gap-2 px-3 py-2 text-[14px] text-rose-500 hover:bg-rose-50 transition-colors"
                     >
-                      <Trash2 size={14} />
+                      <Trash2 size={15} />
                       Delete
                     </button>
                   </motion.div>
@@ -300,20 +300,20 @@ const ReflectionView = () => {
                   ...editingEntry,
                   text: e.target.value,
                 })}
-                className="w-full bg-stone-50 rounded-xl p-3 text-[14px] text-stone-700 placeholder:text-stone-300 focus:outline-none focus:ring-1 focus:ring-orange-100 transition-all min-h-[60px] resize-none font-light leading-relaxed"
+                className="w-full bg-stone-50 rounded-xl p-3 text-[15px] text-stone-700 placeholder:text-stone-300 focus:outline-none focus:ring-1 focus:ring-orange-100 transition-all min-h-[60px] resize-none font-light leading-relaxed"
                 autoFocus
               />
               <div className="flex justify-end gap-2">
                 <button
                   onClick={handleEditCancel}
-                  className="px-3 py-1.5 text-[12px] text-stone-500 hover:text-stone-700 transition-colors"
+                  className="px-3 py-1.5 text-[13px] text-stone-500 hover:text-stone-700 transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleEditSave}
                   disabled={isSubmitting}
-                  className="px-3 py-1.5 text-[12px] bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors disabled:opacity-50"
+                  className="px-3 py-1.5 text-[13px] bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors disabled:opacity-50"
                 >
                   {isSubmitting ? 'Saving...' : 'Save'}
                 </button>
@@ -321,11 +321,11 @@ const ReflectionView = () => {
             </div>
           ) : (
             entry.text ? (
-              <p className="text-[14px] leading-relaxed text-stone-600 font-light">
+              <p className="text-[15px] leading-relaxed text-stone-600 font-light">
                 {entry.text}
               </p>
             ) : (
-              <p className="text-[14px] leading-relaxed text-stone-400 font-light italic">
+              <p className="text-[15px] leading-relaxed text-stone-400 font-light italic">
                 Just checked in
               </p>
             )
@@ -349,8 +349,8 @@ const ReflectionView = () => {
         }`}
       >
         <div className="flex justify-between items-center mb-4">
-          <span className={`text-[11px] font-semibold uppercase tracking-widest font-heading ${
-            isToday ? 'text-stone-400' : 'text-stone-800 text-sm font-medium'
+          <span className={`text-[14px] font-bold uppercase tracking-wider font-heading ${
+            isToday ? 'text-stone-400' : 'text-stone-700'
           }`}>
             {formatDateForDisplay(reflection.date)}
           </span>
@@ -375,12 +375,12 @@ const ReflectionView = () => {
   }
 
   return (
-    <div className="animate-fadeIn mt-4 font-body space-y-6">
+      <div className="animate-fadeIn mt-4 font-body space-y-6">
       
       {/* 1. Past Reflections History (shown at top) */}
       {pastReflections.length > 0 && (
         <div>
-          <h2 className="text-[11px] font-semibold text-stone-300 uppercase tracking-widest mb-4 pl-1 font-heading">
+          <h2 className="text-[14px] font-bold text-stone-400 uppercase tracking-wider mb-4 pl-1 font-heading">
             Past Reflections
           </h2>
           <div className="space-y-4">
@@ -400,7 +400,7 @@ const ReflectionView = () => {
       {/* 2. Insights Section (Placeholder for V1.5) */}
       {reflections.length >= 7 && (
         <div className="bg-white border border-stone-100/50 rounded-2xl p-6 shadow-[0_4px_20px_rgba(0,0,0,0.02)]">
-            <h2 className="text-sm font-medium text-stone-700 mb-4 flex items-center gap-2 font-heading">
+            <h2 className="text-[14px] font-bold text-stone-700 mb-4 flex items-center gap-2 font-heading uppercase tracking-wider">
               <BookOpen size={16} className="text-stone-400"/>
               Insights from Kino
             </h2>
@@ -409,8 +409,8 @@ const ReflectionView = () => {
                  <Sparkles size={18} className="text-orange-400" />
                </div>
                <div>
-                 <h3 className="text-base text-stone-800 font-heading mb-1">Keep Going!</h3>
-                 <p className="text-[14px] leading-relaxed text-stone-600 font-light">
+                 <h3 className="text-[15px] text-stone-800 font-heading font-medium mb-1">Keep Going!</h3>
+                 <p className="text-[15px] leading-relaxed text-stone-600 font-light">
                    You've reflected {reflections.length} times. Consistent reflection builds self-awareness. 
                    Personalized insights coming in V1.5!
                  </p>
@@ -432,12 +432,12 @@ const ReflectionView = () => {
               <Sparkles size={16} className="text-orange-400" />
             </div>
             <div className="flex-1">
-              <p className="text-[14px] text-stone-600 leading-relaxed">
+              <p className="text-[15px] text-stone-600 leading-relaxed">
                 Your mood and notes help Kino understand you better, and give smarter suggestions over time.
               </p>
               <button
                 onClick={markReflectionIntroSeen}
-                className="text-[12px] text-stone-400 hover:text-stone-600 mt-2 transition-colors"
+                className="text-[13px] text-stone-400 hover:text-stone-600 mt-2 transition-colors"
               >
                 Got it
               </button>
@@ -450,8 +450,8 @@ const ReflectionView = () => {
       {reflections.length === 0 && !hasSubmittedToday && hasSeenReflectionIntro && (
         <div className="text-center py-12 text-stone-400">
           <BookOpen size={32} className="mx-auto mb-3 opacity-50" />
-          <p className="text-sm mb-1">Your reflection journey starts here</p>
-          <p className="text-xs text-stone-300">Answer today's prompt below</p>
+          <p className="text-[15px] mb-1">Your reflection journey starts here</p>
+          <p className="text-[13px] text-stone-300">Answer today's prompt below</p>
         </div>
       )}
 
@@ -461,7 +461,7 @@ const ReflectionView = () => {
       )}
 
       {/* 4. Today's Input Section (at bottom) */}
-      <div className="pt-4 pb-8">
+      <div className="pt-4 pb-10">
         <div className="bg-white border border-stone-100 rounded-2xl p-6 shadow-[0_4px_20px_rgba(0,0,0,0.02)] relative overflow-hidden">
           
           {/* Success Toast - appears briefly after save */}
@@ -484,17 +484,17 @@ const ReflectionView = () => {
           
           <div className="flex items-center gap-2 mb-4">
             <Sparkles size={16} className="text-orange-400" />
-            <span className="text-[10px] uppercase tracking-widest text-stone-400 font-heading">
+            <span className="text-[12px] uppercase tracking-widest text-stone-500 font-heading">
               {hasSubmittedToday ? "Add Another Thought" : "Today's Prompt"}
             </span>
             {streak > 0 && (
-              <span className="ml-auto text-[10px] text-orange-400 bg-orange-50 px-2 py-0.5 rounded-full">
+              <span className="ml-auto text-[12px] text-orange-400 bg-orange-50 px-2.5 py-0.5 rounded-full">
                 🔥 {streak} day streak
               </span>
             )}
           </div>
           
-          <h2 className="text-lg text-stone-800 font-heading leading-relaxed mb-5">
+          <h2 className="text-xl text-stone-800 font-heading leading-relaxed mb-5">
             {todayPrompt || 'Loading...'}
           </h2>
           
@@ -508,7 +508,7 @@ const ReflectionView = () => {
 
           {/* Mood Selector */}
           <div className="flex items-center justify-between">
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap">
               {(Object.keys(MOODS) as MoodType[]).map((moodKey) => {
                 const mood = MOODS[moodKey];
                 const isActive = selectedMood === moodKey;
@@ -519,7 +519,7 @@ const ReflectionView = () => {
                     key={moodKey}
                     onClick={() => setSelectedMood(isActive ? null : moodKey)}
                     className={`
-                      flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-medium transition-all border
+                      flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] font-medium transition-all border
                       ${isActive 
                         ? mood.activeBorder
                         : 'bg-stone-50 text-stone-400 border-transparent hover:bg-stone-100'
@@ -552,7 +552,7 @@ const ReflectionView = () => {
           
           {/* Subtle hint */}
           {hasSubmittedToday && !showSuccessMessage && (
-            <p className="text-[11px] text-stone-300 mt-3 text-center">
+            <p className="text-[13px] text-stone-400 mt-3 text-center">
               Add as many thoughts as you'd like throughout the day
             </p>
           )}

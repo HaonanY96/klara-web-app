@@ -15,6 +15,7 @@ interface RequestBody {
   existingSubtasks?: string[];
   locale?: string;
   toneStyle?: 'gentle' | 'concise' | 'coach' | 'silent';
+  inferredState?: 'energized' | 'okay' | 'low' | 'tired' | 'avoidant' | 'uncertain' | 'disengaged' | 'needs_breakdown';
 }
 
 export async function POST(request: NextRequest) {
@@ -75,6 +76,7 @@ export async function POST(request: NextRequest) {
       existingSubtasks: body.existingSubtasks,
       locale: body.locale,
       toneStyle: body.toneStyle,
+      inferredState: body.inferredState,
     });
 
     if (!result.success) {

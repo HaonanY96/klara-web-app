@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useState, useCallback } from 'react';
 import { X, CheckCircle2, AlertCircle, Info } from 'lucide-react';
+import { generateId } from '@/lib/utils';
 
 type ToastType = 'success' | 'error' | 'info';
 
@@ -33,7 +34,7 @@ export function ToastProvider({ children }: ToastProviderProps) {
   const [toasts, setToasts] = useState<Toast[]>([]);
 
   const showToast = useCallback((message: string, type: ToastType = 'info') => {
-    const id = crypto.randomUUID();
+    const id = generateId();
     setToasts(prev => [...prev, { id, message, type }]);
 
     // Auto-remove after 3 seconds

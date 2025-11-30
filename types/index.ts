@@ -447,3 +447,94 @@ export function getQuadrant(task: Task): QuadrantType {
   return 'Later';
 }
 
+// ============================================
+// Nudge System Types (V1.0)
+// ============================================
+
+/**
+ * Types of nudges that can be shown to users
+ */
+export type NudgeType = 
+  | 'overdue'           // Deadline has passed (V1.0)
+  | 'needs_breakdown'   // Task is complex and needs subtasks (V1.0)
+  | 'long_pending'      // Task sitting for > 7 days without deadline (V1.5)
+  | 'repeatedly_postponed'; // Deadline changed >= 3 times (V1.5)
+
+/**
+ * Nudge detection result for a task
+ */
+export interface TaskNudge {
+  /** Type of nudge */
+  type: NudgeType;
+  /** Task ID this nudge applies to */
+  taskId: string;
+  /** Priority for badge display (lower = higher priority) */
+  priority: number;
+  /** Whether this nudge should show a badge */
+  showBadge: boolean;
+  /** When this nudge was detected */
+  detectedAt: string;
+  /** When this nudge was dismissed (if any) */
+  dismissedAt: string | null;
+  /** Cooldown until (if dismissed) */
+  cooldownUntil: string | null;
+}
+
+/**
+ * Badge display info
+ */
+export interface NudgeBadgeInfo {
+  /** Nudge type */
+  type: NudgeType;
+  /** Icon to display */
+  icon: '🕐' | '💭' | '🔄';
+  /** Badge color class */
+  colorClass: string;
+  /** Tooltip text */
+  tooltip: string;
+}
+
+/**
+ * Nudge card action type
+ */
+export type NudgeAction = 
+  | 'set_new_date'
+  | 'break_down'
+  | 'let_go'
+  | 'dismiss'
+  | 'show_less';
+
+/**
+ * Get badge info for a nudge type
+ */
+export function getNudgeBadgeInfo(type: NudgeType): NudgeBadgeInfo | null {
+  switch (type) {
+    case 'overdue':
+      return {
+        type: 'overdue',
+        icon: '🕐',
+        colorClass: 'bg-orange-100 text-orange-600',
+        tooltip: 'Past due date',
+      };
+    case 'long_pending':
+      return {
+        type: 'long_pending',
+        icon: '💭',
+        colorClass: 'bg-stone-100 text-stone-500',
+        tooltip: 'Been sitting for a while',
+      };
+    case 'repeatedly_postponed':
+      return {
+        type: 'repeatedly_postponed',
+        icon: '🔄',
+        colorClass: 'bg-blue-100 text-blue-500',
+        tooltip: 'Postponed multiple times',
+      };
+    case 'needs_breakdown':
+      // No badge for this type
+      return null;
+    default:
+      return null;
+  }
+}
+
