@@ -1,9 +1,9 @@
 /**
  * Nudge Service
- * 
+ *
  * Detects task conditions that warrant gentle nudges/reminders.
  * Based on PRD 4.1.11 Smart Task Nudge System.
- * 
+ *
  * V1.0 Features:
  * - Deadline overdue detection
  * - Needs breakdown detection (complex tasks)
@@ -31,10 +31,10 @@ const NUDGE_CONFIG = {
  * Priority order for badges (lower number = higher priority)
  */
 const NUDGE_PRIORITY: Record<NudgeType, number> = {
-  'overdue': 1,
-  'repeatedly_postponed': 2,
-  'long_pending': 3,
-  'needs_breakdown': 99, // No badge, lowest priority
+  overdue: 1,
+  repeatedly_postponed: 2,
+  long_pending: 3,
+  needs_breakdown: 99, // No badge, lowest priority
 };
 
 /**
@@ -63,10 +63,10 @@ export function isLongPending(task: TaskWithDetails): boolean {
   if (task.completed) return false;
   if (task.dueDate) return false; // Has a deadline
   if (task.importance === 'low' && task.urgency === 'low') return false; // Q4
-  
+
   const createdDate = new Date(task.createdAt);
   const daysOld = Math.floor((Date.now() - createdDate.getTime()) / (1000 * 60 * 60 * 24));
-  
+
   return daysOld >= NUDGE_CONFIG.LONG_PENDING_DAYS;
 }
 
@@ -121,7 +121,7 @@ export function detectTaskNudges(task: TaskWithDetails): TaskNudge[] {
 
 /**
  * Detect nudges for all tasks and apply badge quota
- * 
+ *
  * @param tasks - All tasks to analyze
  * @param maxBadges - Maximum number of badges to show (default: 3)
  * @returns Map of taskId -> TaskNudge[] with badges properly limited
@@ -131,13 +131,13 @@ export function detectAllNudges(
   maxBadges: number = NUDGE_CONFIG.MAX_BADGES
 ): Map<string, TaskNudge[]> {
   const result = new Map<string, TaskNudge[]>();
-  
+
   // Collect all nudges
   const allNudges: TaskNudge[] = [];
-  
+
   for (const task of tasks) {
     if (task.completed) continue;
-    
+
     const taskNudges = detectTaskNudges(task);
     if (taskNudges.length > 0) {
       result.set(task.id, taskNudges);
@@ -149,12 +149,10 @@ export function detectAllNudges(
   if (allNudges.length > maxBadges) {
     // Sort by priority (lower = higher priority)
     allNudges.sort((a, b) => a.priority - b.priority);
-    
+
     // Get task IDs that should show badges
-    const badgeTaskIds = new Set(
-      allNudges.slice(0, maxBadges).map(n => n.taskId)
-    );
-    
+    const badgeTaskIds = new Set(allNudges.slice(0, maxBadges).map(n => n.taskId));
+
     // Update nudges to hide badges for tasks outside quota
     for (const [taskId, nudges] of result) {
       if (!badgeTaskIds.has(taskId)) {
@@ -175,9 +173,7 @@ export function detectAllNudges(
  */
 export function getPrimaryNudge(nudges: TaskNudge[]): TaskNudge | null {
   if (nudges.length === 0) return null;
-  return nudges.reduce((prev, curr) => 
-    curr.priority < prev.priority ? curr : prev
-  );
+  return nudges.reduce((prev, curr) => (curr.priority < prev.priority ? curr : prev));
 }
 
 /**
@@ -199,9 +195,11 @@ export function shouldShowBadge(taskId: string, nudgeMap: Map<string, TaskNudge[
 /**
  * Get the badge nudge for a task (if any)
  */
-export function getBadgeNudge(taskId: string, nudgeMap: Map<string, TaskNudge[]>): TaskNudge | null {
+export function getBadgeNudge(
+  taskId: string,
+  nudgeMap: Map<string, TaskNudge[]>
+): TaskNudge | null {
   const nudges = nudgeMap.get(taskId);
   if (!nudges) return null;
   return nudges.find(n => n.showBadge) ?? null;
 }
-

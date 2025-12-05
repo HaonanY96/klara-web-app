@@ -1,8 +1,8 @@
 /**
  * AI Subtask Suggestions API Route
- * 
+ *
  * POST /api/ai/suggest
- * 
+ *
  * Generates subtask suggestions for a given task using AI.
  * Automatically selects between Gemini (global) and Zhipu (China) based on config.
  */
@@ -15,7 +15,15 @@ interface RequestBody {
   existingSubtasks?: string[];
   locale?: string;
   toneStyle?: 'gentle' | 'concise' | 'coach' | 'silent';
-  inferredState?: 'energized' | 'okay' | 'low' | 'tired' | 'avoidant' | 'uncertain' | 'disengaged' | 'needs_breakdown';
+  inferredState?:
+    | 'energized'
+    | 'okay'
+    | 'low'
+    | 'tired'
+    | 'avoidant'
+    | 'uncertain'
+    | 'disengaged'
+    | 'needs_breakdown';
 }
 
 export async function POST(request: NextRequest) {
@@ -99,9 +107,5 @@ export async function POST(request: NextRequest) {
 
 // Return 405 for other methods
 export async function GET() {
-  return NextResponse.json(
-    { error: 'Method not allowed' },
-    { status: 405 }
-  );
+  return NextResponse.json({ error: 'Method not allowed' }, { status: 405 });
 }
-

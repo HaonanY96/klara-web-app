@@ -1,6 +1,6 @@
 /**
  * Task Repository
- * 
+ *
  * Handles all database operations for tasks.
  * Implements Repository pattern for data access abstraction.
  */
@@ -35,8 +35,8 @@ export const taskRepository = {
    * Get all incomplete tasks
    */
   async getIncomplete(): Promise<Task[]> {
-    return db().tasks
-      .where('completed')
+    return db()
+      .tasks.where('completed')
       .equals(0) // Dexie stores boolean as 0/1
       .reverse()
       .sortBy('createdAt');
@@ -46,11 +46,7 @@ export const taskRepository = {
    * Get all completed tasks
    */
   async getCompleted(): Promise<Task[]> {
-    return db().tasks
-      .where('completed')
-      .equals(1)
-      .reverse()
-      .sortBy('completedAt');
+    return db().tasks.where('completed').equals(1).reverse().sortBy('completedAt');
   },
 
   /**
@@ -66,11 +62,8 @@ export const taskRepository = {
    */
   async getFocused(): Promise<Task[]> {
     const today = new Date().toISOString().split('T')[0];
-    const tasks = await db().tasks
-      .where('isFocused')
-      .equals(1)
-      .toArray();
-    
+    const tasks = await db().tasks.where('isFocused').equals(1).toArray();
+
     // Filter to only today's focused tasks
     return tasks.filter(task => {
       if (!task.focusedAt) return false;
@@ -100,15 +93,9 @@ export const taskRepository = {
     const task = await this.getById(id);
     if (!task) return undefined;
 
-    const subTasks = await db().subTasks
-      .where('taskId')
-      .equals(id)
-      .sortBy('order');
+    const subTasks = await db().subTasks.where('taskId').equals(id).sortBy('order');
 
-    const aiSuggestionRecord = await db().aiSuggestions
-      .where('taskId')
-      .equals(id)
-      .first();
+    const aiSuggestionRecord = await db().aiSuggestions.where('taskId').equals(id).first();
 
     return {
       ...task,
@@ -130,7 +117,7 @@ export const taskRepository = {
       const subTasks = allSubTasks
         .filter(st => st.taskId === task.id)
         .sort((a, b) => a.order - b.order);
-      
+
       const aiSuggestionRecord = allAISuggestions.find(s => s.taskId === task.id);
 
       return {
@@ -150,10 +137,10 @@ export const taskRepository = {
    * @param showSuggestions - Whether to show suggestions expanded
    */
   async create(
-    data: CreateTask, 
-    customId?: string, 
+    data: CreateTask,
+    customId?: string,
     aiSuggestions?: string[],
-    showSuggestions?: boolean
+    _showSuggestions?: boolean
   ): Promise<Task> {
     const timestamp = now();
     const task: Task = {
@@ -166,7 +153,7 @@ export const taskRepository = {
     };
 
     await db().tasks.add(task);
-    
+
     // Store AI suggestions if provided
     if (aiSuggestions && aiSuggestions.length > 0) {
       // Set expiry to 7 days from now
@@ -179,7 +166,7 @@ export const taskRepository = {
         expiresAt,
       });
     }
-    
+
     return task;
   },
 
@@ -197,7 +184,7 @@ export const taskRepository = {
 
     const updated = await this.getById(id);
     if (!updated) throw new Error(`Task ${id} not found after update`);
-    
+
     return updated;
   },
 
@@ -274,7 +261,11 @@ export const taskRepository = {
   /**
    * Update task quadrant (importance/urgency)
    */
-  async updateQuadrant(id: string, importance: 'high' | 'low', urgency: 'high' | 'low'): Promise<Task> {
+  async updateQuadrant(
+    id: string,
+    importance: 'high' | 'low',
+    urgency: 'high' | 'low'
+  ): Promise<Task> {
     await db().tasks.update(id, {
       importance,
       urgency,
@@ -314,10 +305,7 @@ export const taskRepository = {
    */
   async clearOldFocus(): Promise<number> {
     const today = new Date().toISOString().split('T')[0];
-    const focusedTasks = await db().tasks
-      .where('isFocused')
-      .equals(1)
-      .toArray();
+    const focusedTasks = await db().tasks.where('isFocused').equals(1).toArray();
 
     let clearedCount = 0;
     for (const task of focusedTasks) {
@@ -332,7 +320,7 @@ export const taskRepository = {
     }
 
     if (clearedCount > 0) {
-      console.log(`[Kino] Cleared ${clearedCount} old focused tasks`);
+      console.log(`[Klara] Cleared ${clearedCount} old focused tasks`);
     }
 
     return clearedCount;
@@ -344,11 +332,10 @@ export const taskRepository = {
   async getDueToday(): Promise<Task[]> {
     const today = new Date().toISOString().split('T')[0];
     const tasks = await this.getIncomplete();
-    
+
     return tasks.filter(task => {
       if (!task.dueDate) return false;
       return task.dueDate <= today;
     });
   },
 };
-

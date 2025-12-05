@@ -2,14 +2,18 @@
 
 /**
  * useStateInference Hook
- * 
+ *
  * React hook for inferring user state based on task behavior.
  * Uses stateInferenceService to analyze patterns and provide
  * state-aware AI suggestions.
  */
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { inferUserState, isStateValid, getStateDescription } from '@/lib/services/stateInferenceService';
+import {
+  inferUserState,
+  isStateValid,
+  getStateDescription,
+} from '@/lib/services/stateInferenceService';
 import type { InferredUserState, InferredStateType, TaskWithDetails } from '@/types';
 
 /**
@@ -56,7 +60,7 @@ function getSimplifiedStateGroup(state: InferredStateType): SimplifiedStateGroup
 
 /**
  * Hook for inferring user state from task data
- * 
+ *
  * @param tasks - Array of tasks with details to analyze
  * @param autoRefreshInterval - Auto-refresh interval in ms (default: 5 minutes, 0 to disable)
  */
@@ -75,7 +79,7 @@ export function useStateInference(
     }
 
     setIsInferring(true);
-    
+
     // Inference is synchronous but we simulate async for future-proofing
     try {
       const newState = inferUserState(tasks);
@@ -121,7 +125,7 @@ export function useStateInference(
 
   // Computed values
   const isValid = inferredState ? isStateValid(inferredState) : false;
-  
+
   const stateGroup = useMemo(() => {
     if (!inferredState) return 'S_neutral_or_up';
     return getSimplifiedStateGroup(inferredState.state);
@@ -141,4 +145,3 @@ export function useStateInference(
     refresh: performInference,
   };
 }
-

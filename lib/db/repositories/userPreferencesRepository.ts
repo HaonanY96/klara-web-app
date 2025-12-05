@@ -1,19 +1,17 @@
 /**
  * User Preferences Repository
- * 
+ *
  * Handles all database operations for user preferences.
  * This is a singleton pattern - there is only one preferences record per user.
  */
 
 import { getDb } from '../index';
-import type { 
-  UserPreferences, 
-  UpdateUserPreferences, 
+import type {
+  UserPreferences,
   ToneStyle,
   AIFeedback,
   CreateAIFeedback,
   InferredUserState,
-  DEFAULT_USER_PREFERENCES 
 } from '@/types';
 import { generateId } from '@/lib/utils';
 
@@ -39,12 +37,12 @@ export const userPreferencesRepository = {
    */
   async get(): Promise<UserPreferences> {
     let preferences = await db().userPreferences.get(PREFERENCES_ID);
-    
+
     if (!preferences) {
       // Create default preferences
       preferences = await this.createDefault();
     }
-    
+
     return preferences;
   },
 
@@ -73,8 +71,8 @@ export const userPreferencesRepository = {
     };
 
     await db().userPreferences.add(preferences);
-    console.log('[Kino] Created default user preferences');
-    
+    console.log('[Klara] Created default user preferences');
+
     return preferences;
   },
 
@@ -83,10 +81,10 @@ export const userPreferencesRepository = {
    */
   async update(data: Partial<Omit<UserPreferences, 'id' | 'createdAt'>>): Promise<UserPreferences> {
     const timestamp = now();
-    
+
     // Ensure preferences exist
     await this.get();
-    
+
     await db().userPreferences.update(PREFERENCES_ID, {
       ...data,
       updatedAt: timestamp,
@@ -105,7 +103,9 @@ export const userPreferencesRepository = {
   /**
    * Update notification frequency
    */
-  async updateNotificationFrequency(frequency: 'low' | 'medium' | 'high'): Promise<UserPreferences> {
+  async updateNotificationFrequency(
+    frequency: 'low' | 'medium' | 'high'
+  ): Promise<UserPreferences> {
     return this.update({ notificationFrequency: frequency });
   },
 
@@ -130,7 +130,7 @@ export const userPreferencesRepository = {
   async addFeedback(feedback: CreateAIFeedback): Promise<UserPreferences> {
     const preferences = await this.get();
     const timestamp = now();
-    
+
     const newFeedback: AIFeedback = {
       ...feedback,
       id: generateId(),
@@ -138,7 +138,7 @@ export const userPreferencesRepository = {
     };
 
     const updatedHistory = [...preferences.feedbackHistory, newFeedback];
-    
+
     // Optionally limit history size (keep last 100)
     const limitedHistory = updatedHistory.slice(-100);
 
@@ -154,10 +154,12 @@ export const userPreferencesRepository = {
   /**
    * Calculate learned preferences from feedback history
    */
-  calculateLearnedPreferences(feedbackHistory: AIFeedback[]): UserPreferences['learnedPreferences'] {
+  calculateLearnedPreferences(
+    feedbackHistory: AIFeedback[]
+  ): UserPreferences['learnedPreferences'] {
     // Count feedback by suggestion type
     const typeStats: Record<string, { positive: number; negative: number }> = {};
-    
+
     for (const feedback of feedbackHistory) {
       if (!typeStats[feedback.suggestionType]) {
         typeStats[feedback.suggestionType] = { positive: 0, negative: 0 };
@@ -175,7 +177,8 @@ export const userPreferencesRepository = {
 
     for (const [type, stats] of Object.entries(typeStats)) {
       const total = stats.positive + stats.negative;
-      if (total >= 3) { // Require at least 3 data points
+      if (total >= 3) {
+        // Require at least 3 data points
         const positiveRate = stats.positive / total;
         if (positiveRate >= 0.7) {
           preferredSuggestionTypes.push(type);
@@ -219,4 +222,3 @@ export const userPreferencesRepository = {
     return !!preferences;
   },
 };
-

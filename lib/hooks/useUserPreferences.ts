@@ -2,20 +2,19 @@
 
 /**
  * useUserPreferences Hook
- * 
+ *
  * React hook for managing user preferences with IndexedDB persistence.
  * Provides preferences operations with automatic state sync.
  */
 
 import { useState, useEffect, useCallback } from 'react';
 import { userPreferencesRepository } from '@/lib/db/repositories';
-import type { 
-  UserPreferences, 
-  ToneStyle, 
+import type {
+  UserPreferences,
+  ToneStyle,
   CreateAIFeedback,
   InferredUserState,
   FeedbackReaction,
-  InferredStateType,
 } from '@/types';
 
 interface UseUserPreferencesReturn {
@@ -24,11 +23,11 @@ interface UseUserPreferencesReturn {
   toneStyle: ToneStyle;
   hasSeenReflectionIntro: boolean;
   tasksCompletedCount: number;
-  
+
   // State
   isLoading: boolean;
   error: string | null;
-  
+
   // Operations
   updateToneStyle: (style: ToneStyle) => Promise<void>;
   updateNotificationFrequency: (frequency: 'low' | 'medium' | 'high') => Promise<void>;
@@ -37,14 +36,14 @@ interface UseUserPreferencesReturn {
   resetPreferences: () => Promise<void>;
   markReflectionIntroSeen: () => Promise<void>;
   incrementTasksCompleted: () => Promise<void>;
-  
+
   // Helpers
   recordSuggestionFeedback: (
     suggestionType: string,
     suggestionContent: string,
     reaction: FeedbackReaction
   ) => Promise<void>;
-  
+
   // Refresh
   refresh: () => Promise<void>;
 }
@@ -153,20 +152,19 @@ export function useUserPreferences(): UseUserPreferencesReturn {
    * Helper: Record feedback for an AI suggestion
    * Simplified API for common use case
    */
-  const recordSuggestionFeedback = useCallback(async (
-    suggestionType: string,
-    suggestionContent: string,
-    reaction: FeedbackReaction
-  ) => {
-    const feedback: CreateAIFeedback = {
-      suggestionType,
-      suggestionContent,
-      reaction,
-      inferredStateAtTime: preferences?.inferredState?.state ?? null,
-      toneStyleAtTime: preferences?.toneStyle ?? 'gentle',
-    };
-    await addFeedback(feedback);
-  }, [preferences, addFeedback]);
+  const recordSuggestionFeedback = useCallback(
+    async (suggestionType: string, suggestionContent: string, reaction: FeedbackReaction) => {
+      const feedback: CreateAIFeedback = {
+        suggestionType,
+        suggestionContent,
+        reaction,
+        inferredStateAtTime: preferences?.inferredState?.state ?? null,
+        toneStyleAtTime: preferences?.toneStyle ?? 'gentle',
+      };
+      await addFeedback(feedback);
+    },
+    [preferences, addFeedback]
+  );
 
   return {
     preferences,
@@ -232,4 +230,3 @@ Example: (Prefer not to give unsolicited suggestions)
       return getToneInstructions('gentle');
   }
 }
-

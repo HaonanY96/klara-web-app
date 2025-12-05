@@ -50,15 +50,11 @@ export function ToastProvider({ children }: ToastProviderProps) {
   return (
     <ToastContext.Provider value={{ showToast }}>
       {children}
-      
+
       {/* Toast Container */}
       <div className="fixed bottom-24 left-0 right-0 z-50 flex flex-col items-center gap-2 px-4 pointer-events-none">
         {toasts.map(toast => (
-          <ToastItem
-            key={toast.id}
-            toast={toast}
-            onClose={() => removeToast(toast.id)}
-          />
+          <ToastItem key={toast.id} toast={toast} onClose={() => removeToast(toast.id)} />
         ))}
       </div>
     </ToastContext.Provider>
@@ -108,9 +104,7 @@ function ToastItem({ toast, onClose }: ToastItemProps) {
       `}
     >
       <Icon size={18} className={config.iconColor} />
-      <span className={`flex-1 text-sm font-medium ${config.text}`}>
-        {toast.message}
-      </span>
+      <span className={`flex-1 text-sm font-medium ${config.text}`}>{toast.message}</span>
       <button
         onClick={onClose}
         className={`${config.iconColor} hover:opacity-70 transition-opacity`}
@@ -122,4 +116,3 @@ function ToastItem({ toast, onClose }: ToastItemProps) {
 }
 
 export default ToastProvider;
-

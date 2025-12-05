@@ -20,14 +20,17 @@ interface MenuItemProps {
 
 const MenuItem = ({ icon, label, href, onClick, comingSoon }: MenuItemProps) => {
   const content = (
-    <div className={`
+    <div
+      className={`
       flex items-center gap-4 px-5 py-3.5 
       transition-colors rounded-xl mx-2
-      ${comingSoon 
-        ? 'text-stone-300 cursor-not-allowed' 
-        : 'text-stone-600 hover:bg-stone-100 active:bg-stone-200 cursor-pointer'
+      ${
+        comingSoon
+          ? 'text-stone-300 cursor-not-allowed'
+          : 'text-stone-600 hover:bg-stone-100 active:bg-stone-200 cursor-pointer'
       }
-    `}>
+    `}
+    >
       <span className="text-stone-400">{icon}</span>
       <span className="text-[15px] font-medium">{label}</span>
       {comingSoon && (
@@ -55,7 +58,7 @@ const MenuItem = ({ icon, label, href, onClick, comingSoon }: MenuItemProps) => 
 
 /**
  * AppMenu Component
- * 
+ *
  * Side panel menu with navigation and settings
  */
 const AppMenu = ({ isOpen, onClose }: AppMenuProps) => {
@@ -66,13 +69,13 @@ const AppMenu = ({ isOpen, onClose }: AppMenuProps) => {
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
     };
-    
+
     if (isOpen) {
       document.addEventListener('keydown', handleEscape);
       // Prevent body scroll when menu is open
       document.body.style.overflow = 'hidden';
     }
-    
+
     return () => {
       document.removeEventListener('keydown', handleEscape);
       document.body.style.overflow = '';
@@ -90,7 +93,7 @@ const AppMenu = ({ isOpen, onClose }: AppMenuProps) => {
   return (
     <>
       {/* Backdrop */}
-      <div 
+      <div
         className={`
           fixed inset-0 bg-black/20 backdrop-blur-sm z-40
           transition-opacity duration-300
@@ -98,9 +101,9 @@ const AppMenu = ({ isOpen, onClose }: AppMenuProps) => {
         `}
         onClick={onClose}
       />
-      
+
       {/* Side Panel */}
-      <div 
+      <div
         className={`
           fixed top-0 left-0 h-full w-72 bg-white shadow-2xl z-50
           transform transition-transform duration-300 ease-out
@@ -109,7 +112,7 @@ const AppMenu = ({ isOpen, onClose }: AppMenuProps) => {
       >
         {/* Header */}
         <div className="flex items-center justify-between px-5 pt-12 pb-6 border-b border-stone-100">
-          <h2 className="text-xl font-medium text-orange-400 font-heading">Kino</h2>
+          <h2 className="text-xl font-medium text-orange-400 font-heading">Klara</h2>
           <button
             onClick={onClose}
             className="w-9 h-9 flex items-center justify-center text-stone-400 hover:text-stone-600 hover:bg-stone-100 rounded-xl transition-colors"
@@ -118,7 +121,7 @@ const AppMenu = ({ isOpen, onClose }: AppMenuProps) => {
             <X size={20} />
           </button>
         </div>
-        
+
         {/* Menu Items */}
         <nav className="py-4">
           {/* Primary Actions */}
@@ -136,10 +139,10 @@ const AppMenu = ({ isOpen, onClose }: AppMenuProps) => {
               onClick={onClose}
             />
           </div>
-          
+
           {/* Divider */}
           <div className="h-px bg-stone-100 mx-5 my-3" />
-          
+
           {/* Secondary Actions */}
           <div>
             <MenuItem
@@ -147,30 +150,17 @@ const AppMenu = ({ isOpen, onClose }: AppMenuProps) => {
               label="Settings"
               onClick={handleOpenSettings}
             />
-            <MenuItem
-              icon={<User size={20} strokeWidth={1.5} />}
-              label="Account"
-              comingSoon
-            />
-            <MenuItem
-              icon={<Info size={20} strokeWidth={1.5} />}
-              label="About"
-              comingSoon
-            />
+            <MenuItem icon={<User size={20} strokeWidth={1.5} />} label="Account" comingSoon />
+            <MenuItem icon={<Info size={20} strokeWidth={1.5} />} label="About" comingSoon />
           </div>
         </nav>
-        
+
         {/* Settings Panel */}
-        <SettingsPanel 
-          isOpen={isSettingsOpen} 
-          onClose={handleCloseSettings} 
-        />
-        
+        <SettingsPanel isOpen={isSettingsOpen} onClose={handleCloseSettings} />
+
         {/* Footer */}
         <div className="absolute bottom-8 left-0 right-0 px-5">
-          <p className="text-[11px] text-stone-300 text-center">
-            Kino v0.1.0
-          </p>
+          <p className="text-[11px] text-stone-300 text-center">Klara v0.1.0</p>
         </div>
       </div>
     </>
@@ -178,4 +168,3 @@ const AppMenu = ({ isOpen, onClose }: AppMenuProps) => {
 };
 
 export default AppMenu;
-

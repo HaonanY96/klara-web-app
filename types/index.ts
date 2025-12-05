@@ -1,6 +1,6 @@
 /**
- * Kino - Core Type Definitions
- * 
+ * Klara - Core Type Definitions
+ *
  * This file contains all shared types used across the application.
  */
 
@@ -224,14 +224,14 @@ export type ToneStyle = 'gentle' | 'concise' | 'coach' | 'silent';
 /**
  * Inferred user state based on behavioral signals
  */
-export type InferredStateType = 
-  | 'energized'      // High completion rate, active engagement
-  | 'okay'           // Default/neutral state
-  | 'low'            // Low completion rate, less active
-  | 'tired'          // Late night usage
-  | 'avoidant'       // Task postponed multiple times
-  | 'uncertain'      // Frequent task edits/deletions
-  | 'disengaged'     // Haven't opened app for days
+export type InferredStateType =
+  | 'energized' // High completion rate, active engagement
+  | 'okay' // Default/neutral state
+  | 'low' // Low completion rate, less active
+  | 'tired' // Late night usage
+  | 'avoidant' // Task postponed multiple times
+  | 'uncertain' // Frequent task edits/deletions
+  | 'disengaged' // Haven't opened app for days
   | 'needs_breakdown'; // Large tasks without subtasks
 
 /**
@@ -309,23 +309,23 @@ export interface ABTestAssignment {
 export interface UserPreferences {
   /** Unique identifier */
   id: string;
-  
+
   // === Onboarding ===
   /** Whether user has seen the Reflection intro */
   hasSeenReflectionIntro: boolean;
   /** Number of tasks completed (for progressive disclosure) */
   tasksCompletedCount: number;
-  
+
   // === Tone & Style ===
   /** Selected tone style preset */
   toneStyle: ToneStyle;
   /** Notification frequency preference */
   notificationFrequency: 'low' | 'medium' | 'high';
-  
+
   // === AB Testing ===
   /** Current AB test assignments */
   abTests: ABTestAssignment[];
-  
+
   // === Feedback Learning ===
   /** Historical feedback records (for learning) */
   feedbackHistory: AIFeedback[];
@@ -340,11 +340,11 @@ export interface UserPreferences {
     /** Best time slots for nudges (hours 0-23) */
     preferredNudgeHours: number[];
   };
-  
+
   // === Inferred State Cache ===
   /** Latest inferred user state */
   inferredState: InferredUserState | null;
-  
+
   // === Timestamps ===
   /** Creation timestamp (ISO 8601) */
   createdAt: string;
@@ -379,7 +379,9 @@ export type CreateAIFeedback = Omit<AIFeedback, 'id' | 'createdAt'>;
 /**
  * Update type for UserPreferences
  */
-export type UpdateUserPreferences = Partial<Omit<UserPreferences, 'id' | 'createdAt'>> & { id: string };
+export type UpdateUserPreferences = Partial<Omit<UserPreferences, 'id' | 'createdAt'>> & {
+  id: string;
+};
 
 // ============================================
 // Utility Types
@@ -433,7 +435,13 @@ export interface QuadrantConfig {
 export const QUADRANT_CONFIG: QuadrantConfig[] = [
   { id: 'Do First', title: 'Do Now', tag: 'act now', importance: 'high', urgency: 'high' },
   { id: 'Schedule', title: 'Plan & Focus', tag: 'plan ahead', importance: 'high', urgency: 'low' },
-  { id: 'Quick Tasks', title: 'Quick Tasks', tag: 'quick wins', importance: 'low', urgency: 'high' },
+  {
+    id: 'Quick Tasks',
+    title: 'Quick Tasks',
+    tag: 'quick wins',
+    importance: 'low',
+    urgency: 'high',
+  },
   { id: 'Later', title: 'For Later', tag: 'someday', importance: 'low', urgency: 'low' },
 ];
 
@@ -454,10 +462,10 @@ export function getQuadrant(task: Task): QuadrantType {
 /**
  * Types of nudges that can be shown to users
  */
-export type NudgeType = 
-  | 'overdue'           // Deadline has passed (V1.0)
-  | 'needs_breakdown'   // Task is complex and needs subtasks (V1.0)
-  | 'long_pending'      // Task sitting for > 7 days without deadline (V1.5)
+export type NudgeType =
+  | 'overdue' // Deadline has passed (V1.0)
+  | 'needs_breakdown' // Task is complex and needs subtasks (V1.0)
+  | 'long_pending' // Task sitting for > 7 days without deadline (V1.5)
   | 'repeatedly_postponed'; // Deadline changed >= 3 times (V1.5)
 
 /**
@@ -497,12 +505,7 @@ export interface NudgeBadgeInfo {
 /**
  * Nudge card action type
  */
-export type NudgeAction = 
-  | 'set_new_date'
-  | 'break_down'
-  | 'let_go'
-  | 'dismiss'
-  | 'show_less';
+export type NudgeAction = 'set_new_date' | 'break_down' | 'let_go' | 'dismiss' | 'show_less';
 
 /**
  * Get badge info for a nudge type
@@ -537,4 +540,3 @@ export function getNudgeBadgeInfo(type: NudgeType): NudgeBadgeInfo | null {
       return null;
   }
 }
-

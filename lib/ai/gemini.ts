@@ -1,8 +1,8 @@
 /**
  * Gemini AI Service
- * 
+ *
  * Google Gemini API implementation for global users.
- * 
+ *
  * Model hierarchy (per architecture.md):
  * - Primary: gemini-2.5-flash-lite ($0.10/$0.40 per 1M tokens)
  * - Fallback: gemini-2.5-flash ($0.30/$2.50 per 1M tokens)
@@ -117,7 +117,7 @@ User context: The user is returning after some time away.
  */
 function buildPrompt(request: SuggestSubtasksRequest): string {
   const { taskText, existingSubtasks, toneStyle, inferredState } = request;
-  
+
   let prompt = `You are a task decomposition assistant. The user has a task: "${taskText}"
 
 `;
@@ -168,7 +168,7 @@ function parseResponse(text: string): string[] {
   }
 
   const suggestions = JSON.parse(jsonMatch[0]);
-  
+
   if (!Array.isArray(suggestions)) {
     throw new Error('Response is not an array');
   }
@@ -193,16 +193,16 @@ export class GeminiService implements AIService {
     const apiKey = process.env.GEMINI_API_KEY;
     if (apiKey) {
       this.client = new GoogleGenerativeAI(apiKey);
-      
+
       // Primary model: Flash-Lite (most cost effective)
-      this.primaryModel = this.client.getGenerativeModel({ 
+      this.primaryModel = this.client.getGenerativeModel({
         model: AI_MODELS.primary,
         generationConfig: {
           temperature: 0.7,
           maxOutputTokens: 500,
         },
       });
-      
+
       // Fallback model: Flash (better quality, use when primary fails)
       this.fallbackModel = this.client.getGenerativeModel({
         model: AI_MODELS.fallback,
@@ -242,7 +242,7 @@ export class GeminiService implements AIService {
       };
     } catch (primaryError) {
       console.warn('[Gemini] Primary model failed, trying fallback:', primaryError);
-      
+
       // Fallback to Flash model
       if (this.fallbackModel) {
         try {
@@ -280,4 +280,3 @@ export function getGeminiService(): GeminiService {
   }
   return geminiService;
 }
-

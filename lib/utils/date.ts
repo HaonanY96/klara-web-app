@@ -1,8 +1,8 @@
 /**
  * Date Utilities
- * 
+ *
  * Centralized date handling using date-fns to avoid timezone issues.
- * 
+ *
  * Key principles:
  * - Store timestamps in ISO 8601 UTC format (e.g., "2024-11-28T10:30:00.000Z")
  * - Store date-only values as YYYY-MM-DD (e.g., "2024-11-28")
@@ -43,14 +43,14 @@ export function getTodayDateString(): string {
  */
 export function formatDateForDisplay(dateStr: string): string {
   const date = parseLocalDate(dateStr);
-  
+
   if (isToday(date)) {
     return 'Today';
   }
   if (isYesterday(date)) {
     return 'Yesterday';
   }
-  
+
   return format(date, 'EEE, MMM d'); // e.g., "Mon, Nov 28"
 }
 
@@ -86,7 +86,7 @@ export function formatDateTime(isoTimestamp: string): string {
 export function formatDueDate(dateStr: string): string {
   const date = parseLocalDate(dateStr);
   const today = startOfDay(new Date());
-  
+
   if (isSameDay(date, today)) {
     return 'Today';
   }
@@ -96,7 +96,7 @@ export function formatDueDate(dateStr: string): string {
   if (date < today) {
     return format(date, 'MMM d'); // Show date for overdue
   }
-  
+
   return format(date, 'MMM d'); // e.g., "Nov 28"
 }
 
@@ -160,4 +160,3 @@ export function toDateString(date: Date): string {
 export function now(): string {
   return new Date().toISOString();
 }
-

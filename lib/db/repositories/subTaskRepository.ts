@@ -1,6 +1,6 @@
 /**
  * SubTask Repository
- * 
+ *
  * Handles all database operations for subtasks.
  */
 
@@ -26,10 +26,7 @@ export const subTaskRepository = {
    * Get all subtasks for a task
    */
   async getByTaskId(taskId: string): Promise<SubTask[]> {
-    return db().subTasks
-      .where('taskId')
-      .equals(taskId)
-      .sortBy('order');
+    return db().subTasks.where('taskId').equals(taskId).sortBy('order');
   },
 
   /**
@@ -58,9 +55,7 @@ export const subTaskRepository = {
   async create(data: CreateSubTask, customId?: string): Promise<SubTask> {
     // Get the next order number
     const existing = await this.getByTaskId(data.taskId);
-    const maxOrder = existing.length > 0 
-      ? Math.max(...existing.map(st => st.order)) 
-      : -1;
+    const maxOrder = existing.length > 0 ? Math.max(...existing.map(st => st.order)) : -1;
 
     const timestamp = now();
     const subTask: SubTask = {
@@ -78,11 +73,13 @@ export const subTaskRepository = {
   /**
    * Create multiple subtasks at once (for AI suggestions)
    */
-  async createMany(taskId: string, texts: string[], isAISuggested: boolean = false): Promise<SubTask[]> {
+  async createMany(
+    taskId: string,
+    texts: string[],
+    isAISuggested: boolean = false
+  ): Promise<SubTask[]> {
     const existing = await this.getByTaskId(taskId);
-    const startOrder = existing.length > 0 
-      ? Math.max(...existing.map(st => st.order)) + 1 
-      : 0;
+    const startOrder = existing.length > 0 ? Math.max(...existing.map(st => st.order)) + 1 : 0;
 
     const timestamp = now();
     const subTasks: SubTask[] = texts.map((text, index) => ({
@@ -105,12 +102,12 @@ export const subTaskRepository = {
    */
   async update(data: UpdateSubTask): Promise<SubTask> {
     const { id, ...updates } = data;
-    
+
     await db().subTasks.update(id, updates);
 
     const updated = await this.getById(id);
     if (!updated) throw new Error(`SubTask ${id} not found after update`);
-    
+
     return updated;
   },
 
@@ -149,10 +146,7 @@ export const subTaskRepository = {
    * Reorder subtasks
    */
   async reorder(taskId: string, orderedIds: string[]): Promise<void> {
-    const updates = orderedIds.map((id, index) => 
-      db().subTasks.update(id, { order: index })
-    );
+    const updates = orderedIds.map((id, index) => db().subTasks.update(id, { order: index }));
     await Promise.all(updates);
   },
 };
-

@@ -19,7 +19,7 @@ interface TaskContextMenuProps {
 
 /**
  * TaskContextMenu Component
- * 
+ *
  * Long-press context menu for mobile task actions.
  * Provides quick access to:
  * - Add/Remove from Today's Focus (MIT)
@@ -43,7 +43,7 @@ const TaskContextMenu = ({
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
     };
-    
+
     if (isOpen) {
       document.addEventListener('keydown', handleEscape);
     }
@@ -65,9 +65,12 @@ const TaskContextMenu = ({
 
   const menuContent = (
     <>
-      <div className="fixed inset-0 bg-black/50 z-199 animate-in fade-in duration-200" onClick={onClose} />
-      
-      <div 
+      <div
+        className="fixed inset-0 bg-black/50 z-199 animate-in fade-in duration-200"
+        onClick={onClose}
+      />
+
+      <div
         style={menuStyle}
         className="bg-white rounded-2xl shadow-2xl border border-stone-100 overflow-hidden min-w-[200px] animate-in zoom-in-95 fade-in duration-200 z-200"
       >
@@ -91,8 +94,8 @@ const TaskContextMenu = ({
           <div className="h-px bg-stone-100 my-1" />
           <MenuButton
             icon={
-              <Star 
-                size={18} 
+              <Star
+                size={18}
                 className={isFocused ? 'text-orange-400' : 'text-stone-400'}
                 fill={isFocused ? 'currentColor' : 'none'}
                 strokeWidth={1.5}
@@ -106,8 +109,8 @@ const TaskContextMenu = ({
           />
           <MenuButton
             icon={
-              <Pin 
-                size={18} 
+              <Pin
+                size={18}
                 className={isPinned ? 'text-orange-400' : 'text-stone-400'}
                 fill={isPinned ? 'currentColor' : 'none'}
                 strokeWidth={1.5}
@@ -138,7 +141,7 @@ const TaskContextMenu = ({
   if (typeof document !== 'undefined') {
     return createPortal(menuContent, document.body);
   }
-  
+
   return null;
 };
 
@@ -153,8 +156,8 @@ const MenuButton = ({ icon, label, onClick, destructive = false }: MenuButtonPro
   <button
     onClick={onClick}
     className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-colors ${
-      destructive 
-        ? 'hover:bg-rose-50 active:bg-rose-100 text-rose-500' 
+      destructive
+        ? 'hover:bg-rose-50 active:bg-rose-100 text-rose-500'
         : 'hover:bg-stone-50 active:bg-stone-100 text-stone-700'
     }`}
   >

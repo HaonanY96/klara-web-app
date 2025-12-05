@@ -1,47 +1,47 @@
-import type { Metadata, Viewport } from "next";
-import { Inter, Lora } from "next/font/google";
-import "./globals.css";
-import { ToastProvider } from "./components/Toast";
+import type { Metadata, Viewport } from 'next';
+import { Inter, Lora } from 'next/font/google';
+import './globals.css';
+import { ToastProvider } from './components/Toast';
 
 const inter = Inter({
-  variable: "--font-inter",
-  subsets: ["latin"],
-  display: "swap",
+  variable: '--font-inter',
+  subsets: ['latin'],
+  display: 'swap',
 });
 
 const lora = Lora({
-  variable: "--font-lora",
-  subsets: ["latin"],
-  display: "swap",
+  variable: '--font-lora',
+  subsets: ['latin'],
+  display: 'swap',
 });
 
 export const metadata: Metadata = {
-  title: "Kino",
-  description: "A warm, AI-powered task companion that helps you stay focused without stress",
-  manifest: "/manifest.json",
+  title: 'Klara',
+  description: 'A warm, AI-powered task companion that helps you stay focused without stress',
+  manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
-    statusBarStyle: "default",
-    title: "Kino",
+    statusBarStyle: 'default',
+    title: 'Klara',
   },
   formatDetection: {
     telephone: false,
   },
   openGraph: {
-    type: "website",
-    siteName: "Kino",
-    title: "Kino",
-    description: "A warm, AI-powered task companion that helps you stay focused without stress",
+    type: 'website',
+    siteName: 'Klara',
+    title: 'Klara',
+    description: 'A warm, AI-powered task companion that helps you stay focused without stress',
   },
 };
 
 export const viewport: Viewport = {
-  themeColor: "#FB923C",
-  width: "device-width",
+  themeColor: '#FB923C',
+  width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
-  viewportFit: "cover",
+  viewportFit: 'cover',
 };
 
 export default function RootLayout({
@@ -57,12 +57,8 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="mobile-web-app-capable" content="yes" />
       </head>
-      <body
-        className={`${inter.variable} ${lora.variable} antialiased`}
-      >
-        <ToastProvider>
-          {children}
-        </ToastProvider>
+      <body className={`${inter.variable} ${lora.variable} antialiased`}>
+        <ToastProvider>{children}</ToastProvider>
       </body>
     </html>
   );

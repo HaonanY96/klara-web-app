@@ -14,16 +14,16 @@ interface NudgeCardProps {
 
 /**
  * NudgeCard Component
- * 
+ *
  * Displays a gentle nudge card with suggested actions.
  * Based on PRD 4.1.11.5 Nudge Card Design.
- * 
+ *
  * Copy is sourced from lib/nudges/nudgeCopy.ts for easy updates.
  * Follows tone guide: calm, gentle, no guilt, low pressure.
  */
-const NudgeCard = ({ type, taskId, onAction, onDismiss }: NudgeCardProps) => {
+const NudgeCard = ({ type, taskId: _taskId, onAction, onDismiss }: NudgeCardProps) => {
   const [showDismissFollowup, setShowDismissFollowup] = useState(false);
-  
+
   // Get texts from centralized corpus
   const texts = useMemo(() => getNudgeTexts(type), [type]);
 
@@ -61,7 +61,9 @@ const NudgeCard = ({ type, taskId, onAction, onDismiss }: NudgeCardProps) => {
   const cardConfig = getCardConfig(type);
 
   return (
-    <div className={`${cardConfig.bgClass} rounded-xl p-3 space-y-2.5 animate-in fade-in slide-in-from-top-2 duration-300`}>
+    <div
+      className={`${cardConfig.bgClass} rounded-xl p-3 space-y-2.5 animate-in fade-in slide-in-from-top-2 duration-300`}
+    >
       <div className="flex items-start gap-2">
         {cardConfig.icon}
         <div className="flex-1">
@@ -79,7 +81,7 @@ const NudgeCard = ({ type, taskId, onAction, onDismiss }: NudgeCardProps) => {
           <X size={14} />
         </button>
       </div>
-      
+
       <div className="flex flex-wrap gap-1.5 pt-1">
         {renderActions(type, texts, onAction, handleDismiss)}
       </div>
@@ -124,8 +126,8 @@ function getCardConfig(type: NudgeType): { bgClass: string; icon: React.ReactNod
  * Render action buttons based on nudge type
  */
 function renderActions(
-  type: NudgeType, 
-  texts: NudgeCardTexts, 
+  type: NudgeType,
+  texts: NudgeCardTexts,
   onAction: (action: NudgeAction) => void,
   handleDismiss: () => void
 ): React.ReactNode {
@@ -147,7 +149,7 @@ function renderActions(
           </NudgeActionButton>
         </>
       );
-      
+
     case 'needs_breakdown':
       return (
         <>
@@ -155,12 +157,10 @@ function renderActions(
             <Sparkles size={11} />
             {texts.actions.breakDown}
           </NudgeActionButton>
-          <NudgeActionButton onClick={handleDismiss}>
-            {texts.actions.notNow}
-          </NudgeActionButton>
+          <NudgeActionButton onClick={handleDismiss}>{texts.actions.notNow}</NudgeActionButton>
         </>
       );
-      
+
     case 'long_pending':
       return (
         <>
@@ -177,7 +177,7 @@ function renderActions(
           </NudgeActionButton>
         </>
       );
-      
+
     case 'repeatedly_postponed':
       return (
         <>
@@ -194,7 +194,7 @@ function renderActions(
           </NudgeActionButton>
         </>
       );
-      
+
     default:
       return null;
   }
@@ -207,22 +207,20 @@ interface NudgeActionButtonProps {
   children: React.ReactNode;
 }
 
-const NudgeActionButton = ({ 
-  onClick, 
-  variant = 'default', 
-  children 
-}: NudgeActionButtonProps) => {
-  const baseClasses = "flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-medium transition-colors";
-  
+const NudgeActionButton = ({ onClick, variant = 'default', children }: NudgeActionButtonProps) => {
+  const baseClasses =
+    'flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-medium transition-colors';
+
   const variantClasses = {
-    default: "bg-white/80 text-stone-500 hover:bg-white hover:text-stone-600 border border-stone-100",
-    primary: "bg-orange-100/80 text-orange-600 hover:bg-orange-100",
-    danger: "bg-rose-50/80 text-rose-400 hover:bg-rose-50 hover:text-rose-500",
+    default:
+      'bg-white/80 text-stone-500 hover:bg-white hover:text-stone-600 border border-stone-100',
+    primary: 'bg-orange-100/80 text-orange-600 hover:bg-orange-100',
+    danger: 'bg-rose-50/80 text-rose-400 hover:bg-rose-50 hover:text-rose-500',
   };
 
   return (
     <button
-      onClick={(e) => {
+      onClick={e => {
         e.stopPropagation();
         onClick();
       }}
@@ -234,4 +232,3 @@ const NudgeActionButton = ({
 };
 
 export default NudgeCard;
-

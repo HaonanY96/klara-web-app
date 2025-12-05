@@ -1,6 +1,6 @@
 /**
  * AI Client Service
- * 
+ *
  * Frontend client for calling AI API routes.
  */
 
@@ -66,21 +66,37 @@ export async function requestAISuggestions(
  */
 export function shouldSuggestSubtasks(taskText: string): boolean {
   const text = taskText.toLowerCase();
-  
+
   // Tasks that typically need decomposition
   const complexKeywords = [
-    'plan', 'organize', 'prepare', 'create', 'build', 'develop',
-    'launch', 'design', 'implement', 'research', 'analyze',
-    'write', 'complete', 'finish', 'project', 'trip', 'event',
-    'meeting', 'presentation', 'report', 'strategy',
+    'plan',
+    'organize',
+    'prepare',
+    'create',
+    'build',
+    'develop',
+    'launch',
+    'design',
+    'implement',
+    'research',
+    'analyze',
+    'write',
+    'complete',
+    'finish',
+    'project',
+    'trip',
+    'event',
+    'meeting',
+    'presentation',
+    'report',
+    'strategy',
   ];
-  
+
   // Check if task contains complex keywords
   const hasComplexKeyword = complexKeywords.some(kw => text.includes(kw));
-  
+
   // Check if task is long enough to warrant decomposition
   const isLongEnough = taskText.length > 15;
-  
+
   return hasComplexKeyword || isLongEnough;
 }
-

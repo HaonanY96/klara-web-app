@@ -13,4 +13,3 @@ export {
 } from './nudgeTexts';
 
 export type { NudgeCardTexts, NudgeActionLabels } from './nudgeTexts';
-

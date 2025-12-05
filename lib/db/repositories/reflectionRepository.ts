@@ -1,12 +1,18 @@
 /**
  * Reflection Repository
- * 
+ *
  * Handles all database operations for reflection entries.
  * A Reflection contains multiple entries per day (timeline style).
  */
 
 import { getDb } from '../index';
-import type { Reflection, ReflectionEntry, CreateReflection, UpdateReflection, MoodType } from '@/types';
+import type {
+  Reflection,
+  ReflectionEntry,
+  CreateReflection,
+  UpdateReflection,
+  MoodType,
+} from '@/types';
 import { generateId } from '@/lib/utils';
 
 // Helper to get database instance
@@ -41,12 +47,7 @@ export const reflectionRepository = {
    * Get reflections with pagination
    */
   async getRecent(limit: number = 7, offset: number = 0): Promise<Reflection[]> {
-    return db().reflections
-      .orderBy('date')
-      .reverse()
-      .offset(offset)
-      .limit(limit)
-      .toArray();
+    return db().reflections.orderBy('date').reverse().offset(offset).limit(limit).toArray();
   },
 
   /**
@@ -95,15 +96,12 @@ export const reflectionRepository = {
     startDate.setDate(startDate.getDate() - days);
     const startDateStr = startDate.toISOString().split('T')[0];
 
-    const reflections = await db().reflections
-      .where('date')
-      .aboveOrEqual(startDateStr)
-      .toArray();
+    const reflections = await db().reflections.where('date').aboveOrEqual(startDateStr).toArray();
 
     const stats: Record<MoodType, number> = {
-      'Flow': 0,
-      'Neutral': 0,
-      'Drained': 0,
+      Flow: 0,
+      Neutral: 0,
+      Drained: 0,
     };
 
     reflections.forEach(r => {
@@ -143,7 +141,11 @@ export const reflectionRepository = {
    * Add a new entry to today's reflection
    * Creates the reflection if it doesn't exist
    */
-  async addEntryToday(data: { text: string; mood: MoodType | null; prompt: string }): Promise<Reflection> {
+  async addEntryToday(data: {
+    text: string;
+    mood: MoodType | null;
+    prompt: string;
+  }): Promise<Reflection> {
     const todayDate = today();
     const existing = await this.getByDate(todayDate);
 
@@ -176,7 +178,7 @@ export const reflectionRepository = {
    */
   async update(data: UpdateReflection): Promise<Reflection> {
     const { id, ...updates } = data;
-    
+
     await db().reflections.update(id, {
       ...updates,
       updatedAt: now(),
@@ -184,21 +186,23 @@ export const reflectionRepository = {
 
     const updated = await this.getById(id);
     if (!updated) throw new Error(`Reflection ${id} not found after update`);
-    
+
     return updated;
   },
 
   /**
    * Update a specific entry within a reflection
    */
-  async updateEntry(reflectionId: string, entryId: string, updates: { text?: string; mood?: MoodType | null }): Promise<Reflection> {
+  async updateEntry(
+    reflectionId: string,
+    entryId: string,
+    updates: { text?: string; mood?: MoodType | null }
+  ): Promise<Reflection> {
     const reflection = await this.getById(reflectionId);
     if (!reflection) throw new Error(`Reflection ${reflectionId} not found`);
 
-    const updatedEntries = reflection.entries.map(entry => 
-      entry.id === entryId
-        ? { ...entry, ...updates }
-        : entry
+    const updatedEntries = reflection.entries.map(entry =>
+      entry.id === entryId ? { ...entry, ...updates } : entry
     );
 
     return this.update({
@@ -242,7 +246,10 @@ export const reflectionRepository = {
     const reflections = await this.getAll();
     if (reflections.length === 0) return 0;
 
-    const dates = reflections.map(r => r.date).sort().reverse();
+    const dates = reflections
+      .map(r => r.date)
+      .sort()
+      .reverse();
     let streak = 0;
     let expectedDate = today();
 

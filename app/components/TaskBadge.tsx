@@ -11,18 +11,18 @@ interface TaskBadgeProps {
 
 /**
  * TaskBadge Component
- * 
+ *
  * Displays a small badge indicator for task nudges.
  * Based on PRD 4.1.11.2 Badge Display Rules.
  */
 const TaskBadge = ({ type, onClick }: TaskBadgeProps) => {
   const badgeInfo = getNudgeBadgeInfo(type);
-  
+
   if (!badgeInfo) return null;
 
   return (
     <button
-      onClick={(e) => {
+      onClick={e => {
         e.stopPropagation();
         onClick?.();
       }}
@@ -42,4 +42,3 @@ const TaskBadge = ({ type, onClick }: TaskBadgeProps) => {
 };
 
 export default TaskBadge;
-
