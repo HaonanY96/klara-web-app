@@ -7,6 +7,7 @@ import {
   Sun,
   Moon,
   Plus,
+  Send,
   Zap,
   Calendar,
   Clock,
@@ -691,9 +692,9 @@ const KlaraApp = () => {
                       setShowInputDatePicker(prev => !prev);
                       inputRef.current?.focus();
                     }}
-                    className={`transition-colors ${inputDueDate ? 'text-orange-400' : 'text-stone-300 hover:text-stone-500'}`}
+                    className={`flex items-center justify-center transition-colors ${inputDueDate ? 'text-orange-400' : 'text-stone-300 hover:text-stone-500'}`}
                   >
-                    <Calendar size={18} strokeWidth={inputDueDate ? 2 : 1.5} />
+                    <Calendar size={20} strokeWidth={2} />
                   </button>
 
                   {/* Quick Input Date Picker Popover */}
@@ -712,9 +713,9 @@ const KlaraApp = () => {
 
               <button
                 type="submit"
-                className={`text-stone-300 hover:text-orange-400 transition-colors ${inputText ? 'opacity-100' : 'opacity-0'}`}
+                className={`flex items-center justify-center transition-colors ${inputText ? 'text-orange-400 hover:text-orange-500' : 'text-stone-300 opacity-0'}`}
               >
-                <Plus size={22} strokeWidth={2} />
+                <Send size={20} strokeWidth={2} />
               </button>
             </div>
           </form>
