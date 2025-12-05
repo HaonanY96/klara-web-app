@@ -5,6 +5,9 @@
  * based on the Eisenhower Matrix (Importance × Urgency).
  */
 
+import { addDays } from 'date-fns';
+import { getTodayDateString, toDateString } from './date';
+
 /**
  * Keywords that indicate high importance tasks
  * These are tasks that contribute to long-term goals and values
@@ -131,11 +134,11 @@ export function classifyTask(taskText: string, existingDate?: string | null): Ta
   // Date extraction from text (if no existing date)
   if (!detectedDate) {
     if (lowerText.includes('tomorrow')) {
-      const d = new Date();
-      d.setDate(d.getDate() + 1);
-      detectedDate = d.toISOString().split('T')[0];
+      // Use date-fns to properly handle local timezone
+      const tomorrow = addDays(new Date(), 1);
+      detectedDate = toDateString(tomorrow);
     } else if (lowerText.includes('today') || lowerText.includes('tonight')) {
-      detectedDate = new Date().toISOString().split('T')[0];
+      detectedDate = getTodayDateString();
     }
   }
 

@@ -77,8 +77,11 @@ export const DatePickerPopover = ({
   return (
     <div
       ref={containerRef}
-      className={`bg-white rounded-xl shadow-xl border border-stone-100 p-2 min-w-[200px] max-w-[min(90vw,320px)] max-h-[min(80vh,500px)] overflow-y-auto z-50 flex flex-col gap-1 animate-in fade-in zoom-in-95 duration-200 ${className}`}
-      style={{ paddingBottom: showCalendar ? '1rem' : undefined }}
+      className={`bg-white rounded-xl shadow-xl border border-stone-100 p-2 min-w-[200px] max-w-[min(90vw,320px)] max-h-[min(70vh,480px)] overflow-y-auto z-50 flex flex-col gap-1 animate-in fade-in zoom-in-95 duration-200 ${className}`}
+      style={{ 
+        paddingBottom: showCalendar ? '1.5rem' : '0.5rem',
+        marginBottom: showCalendar ? '2rem' : '0',
+      }}
       onClick={e => e.stopPropagation()}
     >
       {!showCalendar ? (

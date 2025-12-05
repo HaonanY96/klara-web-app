@@ -20,8 +20,19 @@ import TodaysFocus from './components/TodaysFocus';
 import EmptyState from './components/EmptyState';
 import AppHeader from './components/AppHeader';
 import AppMenu from './components/AppMenu';
+import BottomNavigation from './components/BottomNavigation';
+import CompletedTasksList from './components/CompletedTasksList';
+import ReflectionNudge from './components/ReflectionNudge';
 import { useToast } from './components/Toast';
-import { useTasks, useUserPreferences, useStateInference, useIsDesktop } from '@/lib/hooks';
+import {
+  useTasks,
+  useUserPreferences,
+  useStateInference,
+  useIsDesktop,
+  useDragAndDrop,
+  useScrollHiding,
+  useTaskHandlers,
+} from '@/lib/hooks';
 import { requestAISuggestions, shouldSuggestSubtasks } from '@/lib/services/aiClient';
 import { detectAllNudges } from '@/lib/services/nudgeService';
 import { classifyTask } from '@/lib/utils/taskClassification';
@@ -35,22 +46,21 @@ const KlaraApp = () => {
   const [activeTab, setActiveTab] = useState('focus');
   const [inputText, setInputText] = useState('');
   const [isAiThinking, setIsAiThinking] = useState(false);
-  const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   // Input Date State
   const [isInputFocused, setIsInputFocused] = useState(false);
   const [inputDueDate, setInputDueDate] = useState<string | null>(null);
   const [showInputDatePicker, setShowInputDatePicker] = useState(false);
-  const [isInputHidden, setIsInputHidden] = useState(false);
   const [expandedTaskIds, setExpandedTaskIds] = useState<Set<string>>(() => new Set());
 
   // Input ref for focusing
   const inputRef = useRef<HTMLInputElement>(null);
   const quickDateButtonRef = useRef<HTMLButtonElement | null>(null);
-  const mainScrollRef = useRef<HTMLDivElement>(null);
-  const lastScrollTopRef = useRef(0);
   const isDesktop = useIsDesktop();
+
+  // Scroll hiding for input bar
+  const { isHidden: isInputHidden, scrollRef: mainScrollRef, setIsHidden: setIsInputHidden } = useScrollHiding({ activeTab });
 
   const toggleTaskExpansion = useCallback((id: string, force?: boolean) => {
     setExpandedTaskIds(prev => {
@@ -100,6 +110,48 @@ const KlaraApp = () => {
   // State inference for context-aware AI suggestions
   const { inferredState } = useStateInference(tasks);
 
+  // Drag and drop
+  const { draggedTaskId, handleDragStart, handleDragOver, handleDrop: handleDropBase } = useDragAndDrop();
+
+  // Task handlers
+  const taskHandlers = useTaskHandlers({
+    tasks,
+    toneStyle,
+    inferredState: inferredState?.state,
+    toggleTask,
+    togglePinned,
+    deleteTask,
+    updateDueDate,
+    updateTaskText,
+    addSubTask,
+    addAllSubTasks,
+    toggleSubTask,
+    deleteSubTask,
+    toggleFocused,
+    dismissAISuggestions,
+    incrementTasksCompleted,
+    showToast,
+    toggleTaskExpansion,
+    setIsAiThinking,
+  });
+
+  const {
+    handleToggleTask,
+    handlePinTask,
+    handleDeleteTask,
+    handleUpdateDate,
+    handleEditTask,
+    handleAddAllSuggestions,
+    handleDismissSuggestions,
+    handleAddManualSubTask,
+    handleToggleSubTask,
+    handleDeleteSubTask,
+    handleToggleFocused,
+    handleNudgeAction,
+    handleNudgeDismiss,
+    handleFocusTaskClick,
+  } = taskHandlers;
+
   // Nudge detection - memoized to avoid recalculating on every render
   const nudgeMap = useMemo(() => {
     return detectAllNudges(incompleteTasks);
@@ -132,105 +184,9 @@ const KlaraApp = () => {
   // actually, DatePickerPopover handles its own close. We just need to pass onClose.
 
 
-  // Nudge action handler
-  const handleNudgeAction = useCallback(
-    (taskId: string, action: NudgeAction) => {
-      switch (action) {
-        case 'set_new_date': {
-          const task = tasks.find(t => t.id === taskId);
-          if (task) {
-            toggleTaskExpansion(taskId, true);
-          }
-          break;
-        }
-        case 'break_down':
-          // Request AI suggestions for this task
-          const taskToBreak = tasks.find(t => t.id === taskId);
-          if (taskToBreak) {
-            setIsAiThinking(true);
-            requestAISuggestions({
-              taskText: taskToBreak.text,
-              toneStyle,
-              inferredState: inferredState?.state,
-            }).then(async aiResult => {
-              if (aiResult.success && aiResult.suggestions.length > 0) {
-                await addAllSubTasks(taskId, aiResult.suggestions);
-                toggleTaskExpansion(taskId, true);
-              }
-              setIsAiThinking(false);
-            });
-          }
-          break;
-        case 'let_go':
-          // Delete the task
-          deleteTask(taskId);
-          showToast('Task removed', 'info');
-          break;
-        case 'show_less':
-          // TODO: Implement feedback learning (V1.5)
-          showToast("Got it, we'll show fewer of these", 'info');
-          break;
-        case 'dismiss':
-          // Just close the card (handled by component)
-          break;
-      }
-    },
-    [tasks, toneStyle, inferredState, addAllSubTasks, deleteTask, showToast, toggleTaskExpansion]
-  );
-
-  // Nudge dismiss handler
-  const handleNudgeDismiss = useCallback((_taskId: string) => {
-    // For now, just close the expanded view
-    // In V1.5, we'll track dismissals for feedback learning
-  }, []);
-
-  const handleEditTask = useCallback(
-    async (taskId: string) => {
-      const task = tasks.find(t => t.id === taskId);
-      if (!task) return;
-      const nextText = window.prompt('Edit task', task.text);
-      if (nextText === null) return;
-      const trimmed = nextText.trim();
-      if (!trimmed || trimmed === task.text) return;
-      await updateTaskText(taskId, trimmed);
-    },
-    [tasks, updateTaskText]
-  );
 
   // State for dismissing the reflection nudge
   const [reflectionNudgeDismissed, setReflectionNudgeDismissed] = useState(false);
-
-  useEffect(() => {
-    const container = mainScrollRef.current;
-    if (!container) return;
-
-    let ticking = false;
-    const handleScroll = () => {
-      const current = container.scrollTop;
-      const delta = current - lastScrollTopRef.current;
-      if (Math.abs(delta) > 20) {
-        if (delta > 0 && current > 40) {
-          setIsInputHidden(true);
-        } else if (delta < 0 || current < 80) {
-          setIsInputHidden(false);
-        }
-        lastScrollTopRef.current = current;
-      }
-      ticking = false;
-    };
-
-    const onScroll = () => {
-      if (!ticking) {
-        window.requestAnimationFrame(handleScroll);
-        ticking = true;
-      }
-    };
-
-    container.addEventListener('scroll', onScroll, { passive: true });
-    return () => {
-      container.removeEventListener('scroll', onScroll);
-    };
-  }, [activeTab]);
 
   const handleAddTask = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -277,108 +233,14 @@ const KlaraApp = () => {
     setInputDueDate(null);
   };
 
-  const handleToggleTask = async (id: string) => {
-    // Check if task is being completed (not uncompleted)
-    const task = tasks.find(t => t.id === id);
-    const isCompleting = task && !task.completed;
 
-    await toggleTask(id);
-
-    // Increment counter when completing a task
-    if (isCompleting) {
-      incrementTasksCompleted();
-    }
-  };
-
-  const handlePinTask = async (id: string) => {
-    await togglePinned(id);
-  };
-
-  const handleDeleteTask = async (id: string) => {
-    await deleteTask(id);
-  };
-
-  const handleUpdateDate = async (id: string, date: string | null) => {
-    await updateDueDate(id, date);
-  };
-
-  const handleAddAllSuggestions = async (taskId: string) => {
-    const task = tasks.find(t => t.id === taskId);
-    if (task && task.aiSuggestions.length > 0) {
-      await addAllSubTasks(taskId, task.aiSuggestions);
-    }
-  };
-
-  const handleDismissSuggestions = useCallback(
-    async (taskId: string) => {
-      await dismissAISuggestions(taskId);
-      toggleTaskExpansion(taskId, false);
-      showToast('Suggestions dismissed', 'info');
+  // Wrap handleDrop with updateQuadrant dependency
+  const handleDrop = useCallback(
+    (e: React.DragEvent, targetQuadrant: string) => {
+      handleDropBase(e, targetQuadrant, updateQuadrant);
     },
-    [dismissAISuggestions, toggleTaskExpansion, showToast]
+    [handleDropBase, updateQuadrant]
   );
-
-  const handleAddManualSubTask = async (taskId: string, text: string) => {
-    await addSubTask(taskId, text);
-  };
-
-  const handleToggleSubTask = async (taskId: string, subTaskId: string) => {
-    await toggleSubTask(taskId, subTaskId);
-  };
-
-  const handleDeleteSubTask = async (taskId: string, subTaskId: string) => {
-    await deleteSubTask(taskId, subTaskId);
-  };
-
-  const handleToggleFocused = async (id: string) => {
-    const result = await toggleFocused(id);
-    if (!result.success && result.error) {
-      showToast(result.error, 'info');
-    }
-  };
-
-  // --- Drag and Drop Logic ---
-  const handleDragStart = (e: React.DragEvent, taskId: string) => {
-    setDraggedTaskId(taskId);
-    e.dataTransfer.effectAllowed = 'move';
-  };
-
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-  };
-
-  const handleDrop = async (e: React.DragEvent, targetQuadrant: string) => {
-    e.preventDefault();
-    if (!draggedTaskId) return;
-
-    let importance: 'high' | 'low' = 'low';
-    let urgency: 'high' | 'low' = 'low';
-
-    switch (targetQuadrant) {
-      case 'Do First':
-        importance = 'high';
-        urgency = 'high';
-        break;
-      case 'Schedule':
-        importance = 'high';
-        urgency = 'low';
-        break;
-      case 'Quick Tasks':
-        importance = 'low';
-        urgency = 'high';
-        break;
-      case 'Later':
-        importance = 'low';
-        urgency = 'low';
-        break;
-      default:
-        return;
-    }
-
-    await updateQuadrant(draggedTaskId, importance, urgency);
-    setDraggedTaskId(null);
-  };
 
   // Quick Date Helpers for Input - simplified now that DatePickerPopover handles logic
   const handleInputDateSelect = (dateStr: string | null) => {
@@ -404,27 +266,6 @@ const KlaraApp = () => {
     }
   }, [isLoading, activeTab]);
 
-  // Handle click on Today's Focus task - scroll to it and expand
-  const handleFocusTaskClick = (taskId: string) => {
-    // Expand the task
-    const task = tasks.find(t => t.id === taskId);
-    if (task) {
-      toggleTaskExpansion(taskId, true);
-    }
-
-    // Scroll to the task element
-    setTimeout(() => {
-      const element = document.getElementById(`task-${taskId}`);
-      if (element) {
-        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        // Add a brief highlight effect
-        element.classList.add('ring-2', 'ring-orange-300');
-        setTimeout(() => {
-          element.classList.remove('ring-2', 'ring-orange-300');
-        }, 1500);
-      }
-    }, 50);
-  };
 
   // Loading state
   if (isLoading) {
@@ -464,40 +305,11 @@ const KlaraApp = () => {
               />
 
               {/* Progressive Disclosure: Reflection Nudge */}
-              <AnimatePresence>
-                {tasksCompletedCount >= 5 &&
-                  !hasSeenReflectionIntro &&
-                  !reflectionNudgeDismissed && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: 'auto' }}
-                      exit={{ opacity: 0, height: 0 }}
-                      transition={{ duration: 0.3 }}
-                      className="mb-4"
-                    >
-                      <div className="bg-linear-to-r from-orange-50 to-amber-50/50 border border-orange-100/50 rounded-xl px-4 py-3 flex items-center gap-3">
-                        <Moon size={16} className="text-orange-400 shrink-0" />
-                        <p className="text-[13px] text-stone-600 flex-1">
-                          You&apos;ve been making good progress. Want to take a moment to reflect?
-                        </p>
-                        <div className="flex gap-2 shrink-0">
-                          <button
-                            onClick={() => setActiveTab('reflection')}
-                            className="text-[12px] text-orange-500 hover:text-orange-600 font-medium"
-                          >
-                            Try it
-                          </button>
-                          <button
-                            onClick={() => setReflectionNudgeDismissed(true)}
-                            className="text-[12px] text-stone-400 hover:text-stone-500"
-                          >
-                            Later
-                          </button>
-                        </div>
-                      </div>
-                    </motion.div>
-                  )}
-              </AnimatePresence>
+              <ReflectionNudge
+                show={tasksCompletedCount >= 5 && !hasSeenReflectionIntro && !reflectionNudgeDismissed}
+                onTryIt={() => setActiveTab('reflection')}
+                onDismiss={() => setReflectionNudgeDismissed(true)}
+              />
 
               {/* Empty State - shown when no incomplete tasks */}
               {incompleteTasks.length === 0 && (
@@ -622,34 +434,11 @@ const KlaraApp = () => {
                   onNudgeDismiss={handleNudgeDismiss}
                 />
 
-                {/* Done Today - only show today's completed tasks */}
-                {todayCompletedTasks.length > 0 && (
-                  <section className="pt-4 opacity-40 hover:opacity-100 transition-opacity duration-500 mt-6 pb-8">
-                    <h3 className="text-[11px] font-semibold text-stone-300 uppercase tracking-widest mb-2 pl-1 font-heading">
-                      Done today ({todayCompletedTasks.length})
-                    </h3>
-                    <div className="space-y-2">
-                      {todayCompletedTasks.slice(0, 5).map(task => (
-                        <div key={task.id} className="flex items-center gap-3 pl-2 group py-1">
-                          <button
-                            onClick={() => handleToggleTask(task.id)}
-                            className="text-stone-300 group-hover:text-stone-400 transition-colors"
-                          >
-                            <CheckCircle2 size={16} strokeWidth={1.5} />
-                          </button>
-                          <span className="text-stone-300 line-through decoration-stone-200 text-[14px] font-normal">
-                            {task.text}
-                          </span>
-                        </div>
-                      ))}
-                      {todayCompletedTasks.length > 5 && (
-                        <p className="text-[11px] text-stone-300 pl-2 mt-2">
-                          +{todayCompletedTasks.length - 5} more
-                        </p>
-                      )}
-                    </div>
-                  </section>
-                )}
+                {/* Completed Tasks */}
+                <CompletedTasksList
+                  tasks={todayCompletedTasks}
+                  onToggleTask={handleToggleTask}
+                />
               </div>
             </>
           ) : (
@@ -692,7 +481,7 @@ const KlaraApp = () => {
                       setShowInputDatePicker(prev => !prev);
                       inputRef.current?.focus();
                     }}
-                    className={`flex items-center justify-center transition-colors ${inputDueDate ? 'text-orange-400' : 'text-stone-300 hover:text-stone-500'}`}
+                    className={`flex items-center justify-center w-5 h-5 transition-colors ${inputDueDate ? 'text-orange-400' : 'text-stone-300 hover:text-stone-500'}`}
                   >
                     <Calendar size={20} strokeWidth={2} />
                   </button>
@@ -713,7 +502,8 @@ const KlaraApp = () => {
 
               <button
                 type="submit"
-                className={`flex items-center justify-center transition-colors ${inputText ? 'text-orange-400 hover:text-orange-500' : 'text-stone-300 opacity-0'}`}
+                className={`flex items-center justify-center w-5 h-5 transition-colors ${inputText ? 'text-orange-400 hover:text-orange-500' : 'text-stone-300 opacity-0'}`}
+                style={{ transform: 'translateY(1px)' }}
               >
                 <Send size={20} strokeWidth={2} />
               </button>
@@ -761,35 +551,8 @@ const KlaraApp = () => {
         </div>
       )}
 
-      {/* Nav */}
-      <nav
-        className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md bg-white/90 backdrop-blur-xl border-t border-stone-100/50 pt-4 pb-4 px-10 flex justify-center gap-24 items-center text-[12px] font-bold tracking-widest text-stone-300 uppercase font-heading z-20"
-        style={{ paddingBottom: 'calc(1.5rem + var(--safe-area-inset-bottom))' }}
-      >
-        <button
-          onClick={() => setActiveTab('focus')}
-          className={`flex flex-col items-center gap-1.5 transition-colors duration-300 ${activeTab === 'focus' ? 'text-stone-800' : 'hover:text-stone-500'}`}
-        >
-          <Sun
-            size={18}
-            strokeWidth={2}
-            className={activeTab === 'focus' ? 'text-orange-400' : ''}
-          />
-          <span>Focus</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('reflection')}
-          className={`flex flex-col items-center gap-1.5 transition-colors duration-300 ${activeTab === 'reflection' ? 'text-stone-800' : 'hover:text-stone-500'}`}
-        >
-          <Moon
-            size={18}
-            strokeWidth={2}
-            className={activeTab === 'reflection' ? 'text-orange-400' : ''}
-          />
-          <span>Reflection</span>
-        </button>
-      </nav>
+      {/* Bottom Navigation */}
+      <BottomNavigation activeTab={activeTab} onTabChange={setActiveTab} />
     </div>
   );
 };
