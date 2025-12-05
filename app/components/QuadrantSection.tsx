@@ -14,7 +14,6 @@ interface QuadrantSectionProps {
   handleDragOver: (e: React.DragEvent) => void;
   draggedTaskId: string | null;
   toggleTask: (id: string) => void;
-  toggleSuggestions: (id: string) => void;
   handleDragStart: (e: React.DragEvent, id: string) => void;
   handleAddAllSuggestions: (id: string) => void;
   handleAddManualSubTask: (id: string, text: string) => void;
@@ -31,6 +30,10 @@ interface QuadrantSectionProps {
   onNudgeAction?: (taskId: string, action: NudgeAction) => void;
   /** Handler for nudge dismiss */
   onNudgeDismiss?: (taskId: string) => void;
+  /** Expanded state getter */
+  isTaskExpanded: (id: string) => boolean;
+  /** Toggle expanded handler */
+  onToggleTaskExpanded: (id: string) => void;
 }
 
 const QuadrantSection = ({
@@ -44,7 +47,6 @@ const QuadrantSection = ({
   handleDragOver,
   draggedTaskId,
   toggleTask,
-  toggleSuggestions,
   handleDragStart,
   handleAddAllSuggestions,
   handleAddManualSubTask,
@@ -58,6 +60,8 @@ const QuadrantSection = ({
   nudgeMap,
   onNudgeAction,
   onNudgeDismiss,
+  isTaskExpanded,
+  onToggleTaskExpanded,
 }: QuadrantSectionProps) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
@@ -110,7 +114,6 @@ const QuadrantSection = ({
             key={task.id}
             task={task}
             toggleTask={toggleTask}
-            toggleSuggestions={toggleSuggestions}
             handleDragStart={handleDragStart}
             handleAddAllSuggestions={handleAddAllSuggestions}
             handleAddManualSubTask={handleAddManualSubTask}
@@ -121,6 +124,8 @@ const QuadrantSection = ({
             handleUpdateDate={handleUpdateDate}
             handleToggleFocused={handleToggleFocused}
             handleEditTask={handleEditTask}
+            isExpanded={isTaskExpanded(task.id)}
+            onToggleExpanded={onToggleTaskExpanded}
             nudges={nudgeMap?.get(task.id)}
             onNudgeAction={onNudgeAction}
             onNudgeDismiss={onNudgeDismiss}

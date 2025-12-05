@@ -54,9 +54,6 @@ interface UseTasksReturn {
   toggleSubTask: (taskId: string, subTaskId: string) => Promise<void>;
   deleteSubTask: (taskId: string, subTaskId: string) => Promise<void>;
 
-  // UI State
-  toggleShowSuggestions: (id: string) => void;
-
   // Refresh
   refresh: () => Promise<void>;
 }
@@ -282,13 +279,6 @@ export function useTasks(): UseTasksReturn {
     [loadTasks]
   );
 
-  // UI State (local only, not persisted)
-  const toggleShowSuggestions = useCallback((id: string) => {
-    setTasks(prev =>
-      prev.map(t => (t.id === id ? { ...t, showSuggestions: !t.showSuggestions } : t))
-    );
-  }, []);
-
   return {
     tasks,
     incompleteTasks,
@@ -310,7 +300,6 @@ export function useTasks(): UseTasksReturn {
     addAllSubTasks,
     toggleSubTask,
     deleteSubTask,
-    toggleShowSuggestions,
     refresh: loadTasks,
   };
 }

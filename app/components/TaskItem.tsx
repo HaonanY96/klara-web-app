@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   Circle,
   CheckCircle2,
@@ -23,7 +23,6 @@ import TaskContextMenu from './TaskContextMenu';
 interface TaskItemProps {
   task: TaskWithDetails;
   toggleTask: (id: string) => void;
-  toggleSuggestions: (id: string) => void;
   handleDragStart: (e: React.DragEvent, id: string) => void;
   handleAddAllSuggestions: (id: string) => void;
   handleAddManualSubTask: (id: string, text: string) => void;
@@ -34,6 +33,10 @@ interface TaskItemProps {
   handleUpdateDate: (id: string, date: string | null) => void;
   handleToggleFocused?: (id: string) => void;
   handleEditTask?: (id: string) => void;
+  /** Expanded state for subtasks/suggestions */
+  isExpanded: boolean;
+  /** Handler to toggle expanded state */
+  onToggleExpanded: (id: string) => void;
   /** Active nudges for this task */
   nudges?: TaskNudge[];
   /** Handler for nudge actions */
@@ -45,7 +48,6 @@ interface TaskItemProps {
 const TaskItem = ({
   task,
   toggleTask,
-  toggleSuggestions,
   handleDragStart,
   handleAddAllSuggestions,
   handleAddManualSubTask,
@@ -56,6 +58,8 @@ const TaskItem = ({
   handleUpdateDate,
   handleToggleFocused,
   handleEditTask,
+  isExpanded,
+  onToggleExpanded,
   nudges = [],
   onNudgeAction,
   onNudgeDismiss,
@@ -79,6 +83,7 @@ const TaskItem = ({
   const longPressTimer = useRef<NodeJS.Timeout | null>(null);
   const isLongPress = useRef(false);
   const dateButtonRef = useRef<HTMLButtonElement | null>(null);
+  const datePickerContentRef = useRef<HTMLDivElement | null>(null);
   // Debounce ref to prevent immediate close on mobile touch
   const datePickerOpenTimeRef = useRef<number>(0);
 
@@ -179,6 +184,24 @@ const TaskItem = ({
     setShowContextMenu(false);
     openDatePickerAtAnchor();
   };
+
+  useEffect(() => {
+    if (!showDatePicker) return;
+
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target as Node;
+      if (
+        datePickerContentRef.current?.contains(target) ||
+        dateButtonRef.current?.contains(target)
+      ) {
+        return;
+      }
+      closeDatePicker(true);
+    };
+
+    window.addEventListener('pointerdown', handlePointerDown);
+    return () => window.removeEventListener('pointerdown', handlePointerDown);
+  }, [showDatePicker]);
 
   const handleEditTaskRequest = () => {
     setShowContextMenu(false);
@@ -320,11 +343,10 @@ const TaskItem = ({
 
           <div className="flex-1">
             <div className="flex items-start gap-3">
-              <div
-                className="text-stone-700 font-normal text-[15px] leading-snug cursor-pointer font-body flex-1 min-w-0 flex flex-wrap items-center gap-2"
-                onClick={() => toggleSuggestions(task.id)}
-              >
-                <span className="break-words">{task.text}</span>
+              <div className="text-stone-700 font-normal text-[15px] leading-snug font-body flex-1 min-w-0 flex flex-wrap items-center gap-2">
+                <span className="wrap-break-word cursor-pointer" onClick={() => onToggleExpanded(task.id)}>
+                  {task.text}
+                </span>
 
                 {/* Date Tag */}
                 {task.dueDate && (
@@ -348,7 +370,7 @@ const TaskItem = ({
               </div>
 
               {/* Indicators */}
-              <div className="flex items-center gap-2.5 flex-shrink-0">
+              <div className="flex items-center gap-2.5 shrink-0">
                 <div className="flex items-center gap-2">
                   {nudges
                     .filter(n => n.showBadge)
@@ -356,7 +378,7 @@ const TaskItem = ({
                       <TaskBadge
                         key={nudge.type}
                         type={nudge.type}
-                        onClick={() => toggleSuggestions(task.id)}
+                        onClick={() => onToggleExpanded(task.id)}
                       />
                     ))}
 
@@ -389,7 +411,7 @@ const TaskItem = ({
 
             {/* Expanded Area: Subtasks & Suggestions */}
             <div
-              className={`overflow-hidden transition-all duration-500 ease-[cubic-bezier(0.2,0.8,0.2,1)] ${task.showSuggestions ? 'max-h-[600px] opacity-100 mt-3 pb-1' : 'max-h-0 opacity-0'}`}
+              className={`overflow-hidden transition-all duration-500 ease-[cubic-bezier(0.2,0.8,0.2,1)] ${isExpanded ? 'max-h-[600px] opacity-100 mt-3 pb-1' : 'max-h-0 opacity-0'}`}
               onClick={e => e.stopPropagation()}
             >
               <div className="pl-2 border-l border-orange-100/60 ml-0.5 space-y-3">
@@ -426,7 +448,10 @@ const TaskItem = ({
                     {task.subTasks.map(subTask => (
                       <div key={subTask.id} className="flex items-start gap-2.5 group/sub">
                         <button
-                          onClick={() => toggleSubTask(task.id, subTask.id)}
+                          onClick={e => {
+                            e.stopPropagation();
+                            toggleSubTask(task.id, subTask.id);
+                          }}
                           className={`mt-0.5 transition-colors ${subTask.completed ? 'text-emerald-400' : 'text-stone-200 hover:text-stone-400'}`}
                         >
                           {subTask.completed ? (
@@ -441,7 +466,10 @@ const TaskItem = ({
                           {subTask.text}
                         </span>
                         <button
-                          onClick={() => deleteSubTask(task.id, subTask.id)}
+                          onClick={e => {
+                            e.stopPropagation();
+                            deleteSubTask(task.id, subTask.id);
+                          }}
                           className="text-stone-200 hover:text-rose-300 transition-opacity md:opacity-0 md:group-hover/sub:opacity-100"
                         >
                           <X size={14} />
@@ -510,21 +538,11 @@ const TaskItem = ({
         datePickerPosition &&
         typeof document !== 'undefined' &&
         createPortal(
-          <div
-            className="fixed inset-0 z-100 bg-black/50"
-            onClick={() => closeDatePicker()}
-            onTouchEnd={e => {
-              // Only close if touch was on the backdrop itself
-              if (e.target === e.currentTarget) {
-                closeDatePicker();
-              }
-            }}
-          >
+          <div className="fixed inset-0 z-100 bg-black/50">
             <div
+              ref={datePickerContentRef}
               className="absolute bg-white rounded-lg shadow-xl border border-stone-100 p-2 min-w-[200px] flex flex-col gap-1 animate-in fade-in zoom-in-95 duration-200"
               style={{ top: datePickerPosition.top, left: datePickerPosition.left }}
-              onClick={e => e.stopPropagation()}
-              onTouchEnd={e => e.stopPropagation()}
             >
               <button
                 onClick={() => setDateQuick('today')}

@@ -23,8 +23,9 @@ import { useToast } from './components/Toast';
 import { useTasks, useUserPreferences, useStateInference } from '@/lib/hooks';
 import { requestAISuggestions, shouldSuggestSubtasks } from '@/lib/services/aiClient';
 import { detectAllNudges } from '@/lib/services/nudgeService';
+import { classifyTask } from '@/lib/utils/taskClassification';
 import { motion, AnimatePresence } from 'motion/react';
-import type { NudgeAction } from '@/types';
+import type { NudgeAction, TaskWithDetails } from '@/types';
 
 const KlaraApp = () => {
   const { showToast } = useToast();
@@ -39,11 +40,29 @@ const KlaraApp = () => {
   const [inputDueDate, setInputDueDate] = useState<string | null>(null);
   const [showInputDatePicker, setShowInputDatePicker] = useState(false);
   const [isInputHidden, setIsInputHidden] = useState(false);
+  const [expandedTaskIds, setExpandedTaskIds] = useState<Set<string>>(() => new Set());
 
   // Input ref for focusing
   const inputRef = useRef<HTMLInputElement>(null);
+  const quickDatePickerRef = useRef<HTMLDivElement | null>(null);
+  const quickDateButtonRef = useRef<HTMLButtonElement | null>(null);
   const mainScrollRef = useRef<HTMLDivElement>(null);
   const lastScrollTopRef = useRef(0);
+
+  const toggleTaskExpansion = useCallback((id: string, force?: boolean) => {
+    setExpandedTaskIds(prev => {
+      const next = new Set(prev);
+      const shouldExpand = force !== undefined ? force : !next.has(id);
+      if (shouldExpand) {
+        next.add(id);
+      } else {
+        next.delete(id);
+      }
+      return next;
+    });
+  }, []);
+
+  const isTaskExpanded = useCallback((id: string) => expandedTaskIds.has(id), [expandedTaskIds]);
 
   // AI Online status (for now, always true - can be connected to actual API status later)
   const [isAIOnline] = useState(true);
@@ -68,7 +87,6 @@ const KlaraApp = () => {
     addAllSubTasks,
     toggleSubTask,
     deleteSubTask,
-    toggleShowSuggestions,
   } = useTasks();
 
   // User preferences for progressive disclosure and AI tone
@@ -83,17 +101,58 @@ const KlaraApp = () => {
     return detectAllNudges(incompleteTasks);
   }, [incompleteTasks]);
 
+  // Keep expanded state in sync with task list (auto-expand AI suggestion tasks)
+  useEffect(() => {
+    setExpandedTaskIds(prev => {
+      const next = new Set<string>();
+      const currentIds = new Set(tasks.map(t => t.id));
+
+      prev.forEach(id => {
+        if (currentIds.has(id)) {
+          next.add(id);
+        }
+      });
+
+      tasks.forEach(task => {
+        if (task.showSuggestions) {
+          next.add(task.id);
+        }
+      });
+
+      return next;
+    });
+  }, [tasks]);
+
+  // Close quick date picker when tapping outside
+  useEffect(() => {
+    if (!showInputDatePicker) return;
+
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target as Node;
+      if (
+        quickDatePickerRef.current?.contains(target) ||
+        quickDateButtonRef.current?.contains(target)
+      ) {
+        return;
+      }
+      setShowInputDatePicker(false);
+    };
+
+    window.addEventListener('pointerdown', handlePointerDown);
+    return () => window.removeEventListener('pointerdown', handlePointerDown);
+  }, [showInputDatePicker]);
+
   // Nudge action handler
   const handleNudgeAction = useCallback(
     (taskId: string, action: NudgeAction) => {
       switch (action) {
-        case 'set_new_date':
-          // Expand the task to show date picker
+        case 'set_new_date': {
           const task = tasks.find(t => t.id === taskId);
-          if (task && !task.showSuggestions) {
-            toggleShowSuggestions(taskId);
+          if (task) {
+            toggleTaskExpansion(taskId, true);
           }
           break;
+        }
         case 'break_down':
           // Request AI suggestions for this task
           const taskToBreak = tasks.find(t => t.id === taskId);
@@ -106,6 +165,7 @@ const KlaraApp = () => {
             }).then(async aiResult => {
               if (aiResult.success && aiResult.suggestions.length > 0) {
                 await addAllSubTasks(taskId, aiResult.suggestions);
+                toggleTaskExpansion(taskId, true);
               }
               setIsAiThinking(false);
             });
@@ -125,7 +185,7 @@ const KlaraApp = () => {
           break;
       }
     },
-    [tasks, toneStyle, inferredState, toggleShowSuggestions, addAllSubTasks, deleteTask, showToast]
+    [tasks, toneStyle, inferredState, addAllSubTasks, deleteTask, showToast, toggleTaskExpansion]
   );
 
   // Nudge dismiss handler
@@ -186,49 +246,11 @@ const KlaraApp = () => {
     e.preventDefault();
     if (!inputText.trim()) return;
 
-    const lowerText = inputText.toLowerCase();
-    let detectedImportance: 'high' | 'low' = 'low';
-    let detectedUrgency: 'high' | 'low' = 'low';
-    let autoDetectedDate = inputDueDate;
+    // Classify task using centralized classification logic
+    const classification = classifyTask(inputText, inputDueDate);
+    const { importance: detectedImportance, urgency: detectedUrgency, detectedDate: autoDetectedDate } = classification;
 
-    // Keyword-based quadrant classification
-    if (
-      lowerText.includes('plan') ||
-      lowerText.includes('strategy') ||
-      lowerText.includes('launch') ||
-      lowerText.includes('important')
-    ) {
-      detectedImportance = 'high';
-    }
-    if (
-      lowerText.includes('now') ||
-      lowerText.includes('asap') ||
-      lowerText.includes('urgent') ||
-      lowerText.includes('bill') ||
-      lowerText.includes('deadline')
-    ) {
-      detectedUrgency = 'high';
-    }
-    if (
-      lowerText.includes('movie') ||
-      lowerText.includes('watch') ||
-      lowerText.includes('game') ||
-      lowerText.includes('someday')
-    ) {
-      detectedImportance = 'low';
-      detectedUrgency = 'low';
-    }
-
-    // Date extraction from text
-    if (!autoDetectedDate) {
-      if (lowerText.includes('tomorrow')) {
-        const d = new Date();
-        d.setDate(d.getDate() + 1);
-        autoDetectedDate = d.toISOString().split('T')[0];
-      } else if (lowerText.includes('today')) {
-        autoDetectedDate = new Date().toISOString().split('T')[0];
-      }
-    }
+    let createdTask: TaskWithDetails | null = null;
 
     // Check if task should get AI suggestions
     const shouldGetSuggestions = shouldSuggestSubtasks(inputText);
@@ -241,7 +263,7 @@ const KlaraApp = () => {
         inferredState: inferredState?.state,
       });
 
-      await addTask(inputText, {
+      createdTask = await addTask(inputText, {
         importance: detectedImportance,
         urgency: detectedUrgency,
         dueDate: autoDetectedDate,
@@ -250,11 +272,15 @@ const KlaraApp = () => {
 
       setIsAiThinking(false);
     } else {
-      await addTask(inputText, {
+      createdTask = await addTask(inputText, {
         importance: detectedImportance,
         urgency: detectedUrgency,
         dueDate: autoDetectedDate,
       });
+    }
+
+    if (createdTask?.aiSuggestions.length) {
+      toggleTaskExpansion(createdTask.id, true);
     }
 
     setInputText('');
@@ -272,10 +298,6 @@ const KlaraApp = () => {
     if (isCompleting) {
       incrementTasksCompleted();
     }
-  };
-
-  const handleToggleSuggestions = (id: string) => {
-    toggleShowSuggestions(id);
   };
 
   const handlePinTask = async (id: string) => {
@@ -404,8 +426,8 @@ const KlaraApp = () => {
   const handleFocusTaskClick = (taskId: string) => {
     // Expand the task
     const task = tasks.find(t => t.id === taskId);
-    if (task && !task.showSuggestions) {
-      toggleShowSuggestions(taskId);
+    if (task) {
+      toggleTaskExpansion(taskId, true);
     }
 
     // Scroll to the task element
@@ -515,7 +537,6 @@ const KlaraApp = () => {
                   handleDragOver={handleDragOver}
                   draggedTaskId={draggedTaskId}
                   toggleTask={handleToggleTask}
-                  toggleSuggestions={handleToggleSuggestions}
                   handleDragStart={handleDragStart}
                   handleAddAllSuggestions={handleAddAllSuggestions}
                   handleAddManualSubTask={handleAddManualSubTask}
@@ -526,6 +547,8 @@ const KlaraApp = () => {
                   handleUpdateDate={handleUpdateDate}
                   handleToggleFocused={handleToggleFocused}
                   handleEditTask={handleEditTask}
+                  isTaskExpanded={isTaskExpanded}
+                  onToggleTaskExpanded={toggleTaskExpansion}
                   nudgeMap={nudgeMap}
                   onNudgeAction={handleNudgeAction}
                   onNudgeDismiss={handleNudgeDismiss}
@@ -541,7 +564,6 @@ const KlaraApp = () => {
                   handleDragOver={handleDragOver}
                   draggedTaskId={draggedTaskId}
                   toggleTask={handleToggleTask}
-                  toggleSuggestions={handleToggleSuggestions}
                   handleDragStart={handleDragStart}
                   handleAddAllSuggestions={handleAddAllSuggestions}
                   handleAddManualSubTask={handleAddManualSubTask}
@@ -552,6 +574,8 @@ const KlaraApp = () => {
                   handleUpdateDate={handleUpdateDate}
                   handleToggleFocused={handleToggleFocused}
                   handleEditTask={handleEditTask}
+                  isTaskExpanded={isTaskExpanded}
+                  onToggleTaskExpanded={toggleTaskExpansion}
                   nudgeMap={nudgeMap}
                   onNudgeAction={handleNudgeAction}
                   onNudgeDismiss={handleNudgeDismiss}
@@ -567,7 +591,6 @@ const KlaraApp = () => {
                   handleDragOver={handleDragOver}
                   draggedTaskId={draggedTaskId}
                   toggleTask={handleToggleTask}
-                  toggleSuggestions={handleToggleSuggestions}
                   handleDragStart={handleDragStart}
                   handleAddAllSuggestions={handleAddAllSuggestions}
                   handleAddManualSubTask={handleAddManualSubTask}
@@ -578,6 +601,8 @@ const KlaraApp = () => {
                   handleUpdateDate={handleUpdateDate}
                   handleToggleFocused={handleToggleFocused}
                   handleEditTask={handleEditTask}
+                  isTaskExpanded={isTaskExpanded}
+                  onToggleTaskExpanded={toggleTaskExpansion}
                   nudgeMap={nudgeMap}
                   onNudgeAction={handleNudgeAction}
                   onNudgeDismiss={handleNudgeDismiss}
@@ -594,7 +619,6 @@ const KlaraApp = () => {
                   handleDragOver={handleDragOver}
                   draggedTaskId={draggedTaskId}
                   toggleTask={handleToggleTask}
-                  toggleSuggestions={handleToggleSuggestions}
                   handleDragStart={handleDragStart}
                   handleAddAllSuggestions={handleAddAllSuggestions}
                   handleAddManualSubTask={handleAddManualSubTask}
@@ -605,6 +629,8 @@ const KlaraApp = () => {
                   handleUpdateDate={handleUpdateDate}
                   handleToggleFocused={handleToggleFocused}
                   handleEditTask={handleEditTask}
+                  isTaskExpanded={isTaskExpanded}
+                  onToggleTaskExpanded={toggleTaskExpansion}
                   nudgeMap={nudgeMap}
                   onNudgeAction={handleNudgeAction}
                   onNudgeDismiss={handleNudgeDismiss}
@@ -671,11 +697,15 @@ const KlaraApp = () => {
 
             <div className="absolute right-0 top-3 flex items-center gap-3">
               {/* Date Trigger in Input */}
-              {(isInputFocused || inputDueDate) && (
+              {(isInputFocused || inputDueDate || showInputDatePicker) && (
                 <div className="relative">
                   <button
+                    ref={quickDateButtonRef}
                     type="button"
-                    onClick={() => setShowInputDatePicker(!showInputDatePicker)}
+                    onClick={() => {
+                      setShowInputDatePicker(prev => !prev);
+                      inputRef.current?.focus();
+                    }}
                     className={`transition-colors ${inputDueDate ? 'text-orange-400' : 'text-stone-300 hover:text-stone-500'}`}
                   >
                     <Calendar size={18} strokeWidth={inputDueDate ? 2 : 1.5} />
@@ -683,53 +713,56 @@ const KlaraApp = () => {
 
                   {/* Quick Input Date Picker Popover */}
                   {showInputDatePicker && (
-                    <div className="absolute bottom-full right-0 mb-2 bg-white rounded-xl shadow-xl border border-stone-100 p-2 min-w-[140px] z-50 flex flex-col gap-1 animate-in fade-in zoom-in-95 duration-200">
-                      <button
-                        type="button"
-                        onClick={() => setInputDateQuick('today')}
-                        className="text-left px-3 py-2 text-[13px] text-stone-600 hover:bg-stone-50 rounded-lg transition-colors"
-                      >
-                        Today
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setInputDateQuick('tomorrow')}
-                        className="text-left px-3 py-2 text-[13px] text-stone-600 hover:bg-stone-50 rounded-lg transition-colors"
-                      >
-                        Tomorrow
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setInputDateQuick('this-weekend')}
-                        className="text-left px-3 py-2 text-[13px] text-stone-600 hover:bg-stone-50 rounded-lg transition-colors"
-                      >
-                        This Weekend
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setInputDateQuick('next-week')}
-                        className="text-left px-3 py-2 text-[13px] text-stone-600 hover:bg-stone-50 rounded-lg transition-colors"
-                      >
-                        Next Week
-                      </button>
-
-                      <div className="h-px bg-stone-100 my-0.5"></div>
-
-                      <div className="relative">
-                        <input
-                          type="date"
-                          className="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-10"
-                          onChange={e => setInputDateQuick('custom', e.target.value)}
-                        />
+                    <div
+                      ref={quickDatePickerRef}
+                      className="absolute bottom-full right-0 mb-2 bg-white rounded-xl shadow-xl border border-stone-100 p-2 min-w-[140px] z-50 flex flex-col gap-1 animate-in fade-in zoom-in-95 duration-200"
+                    >
                         <button
                           type="button"
-                          className="w-full text-left px-3 py-2 text-[13px] text-stone-600 hover:bg-stone-50 rounded-lg transition-colors flex justify-between items-center"
+                          onClick={() => setInputDateQuick('today')}
+                          className="text-left px-3 py-2 text-[13px] text-stone-600 hover:bg-stone-50 rounded-lg transition-colors"
                         >
-                          <span>Pick Date...</span>
-                          <Calendar size={10} className="opacity-50" />
+                          Today
                         </button>
+                        <button
+                          type="button"
+                          onClick={() => setInputDateQuick('tomorrow')}
+                          className="text-left px-3 py-2 text-[13px] text-stone-600 hover:bg-stone-50 rounded-lg transition-colors"
+                        >
+                          Tomorrow
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setInputDateQuick('this-weekend')}
+                          className="text-left px-3 py-2 text-[13px] text-stone-600 hover:bg-stone-50 rounded-lg transition-colors"
+                        >
+                          This Weekend
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setInputDateQuick('next-week')}
+                          className="text-left px-3 py-2 text-[13px] text-stone-600 hover:bg-stone-50 rounded-lg transition-colors"
+                        >
+                          Next Week
+                        </button>
+
+                        <div className="h-px bg-stone-100 my-0.5"></div>
+
+                        <div className="relative">
+                          <input
+                            type="date"
+                            className="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-10"
+                            onChange={e => setInputDateQuick('custom', e.target.value)}
+                          />
+                          <button
+                            type="button"
+                            className="w-full text-left px-3 py-2 text-[13px] text-stone-600 hover:bg-stone-50 rounded-lg transition-colors flex justify-between items-center"
+                          >
+                            <span>Pick Date...</span>
+                            <Calendar size={10} className="opacity-50" />
+                          </button>
+                        </div>
                       </div>
-                    </div>
                   )}
                 </div>
               )}
