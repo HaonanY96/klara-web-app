@@ -20,12 +20,14 @@ import EmptyState from './components/EmptyState';
 import AppHeader from './components/AppHeader';
 import AppMenu from './components/AppMenu';
 import { useToast } from './components/Toast';
-import { useTasks, useUserPreferences, useStateInference } from '@/lib/hooks';
+import { useTasks, useUserPreferences, useStateInference, useIsDesktop } from '@/lib/hooks';
 import { requestAISuggestions, shouldSuggestSubtasks } from '@/lib/services/aiClient';
 import { detectAllNudges } from '@/lib/services/nudgeService';
 import { classifyTask } from '@/lib/utils/taskClassification';
 import { motion, AnimatePresence } from 'motion/react';
 import type { NudgeAction, TaskWithDetails } from '@/types';
+import { DatePickerPopover } from './components/DatePickerPopover';
+import { parseLocalDate } from '@/lib/utils/date';
 
 const KlaraApp = () => {
   const { showToast } = useToast();
@@ -44,10 +46,10 @@ const KlaraApp = () => {
 
   // Input ref for focusing
   const inputRef = useRef<HTMLInputElement>(null);
-  const quickDatePickerRef = useRef<HTMLDivElement | null>(null);
   const quickDateButtonRef = useRef<HTMLButtonElement | null>(null);
   const mainScrollRef = useRef<HTMLDivElement>(null);
   const lastScrollTopRef = useRef(0);
+  const isDesktop = useIsDesktop();
 
   const toggleTaskExpansion = useCallback((id: string, force?: boolean) => {
     setExpandedTaskIds(prev => {
@@ -87,6 +89,7 @@ const KlaraApp = () => {
     addAllSubTasks,
     toggleSubTask,
     deleteSubTask,
+    dismissAISuggestions,
   } = useTasks();
 
   // User preferences for progressive disclosure and AI tone
@@ -123,24 +126,10 @@ const KlaraApp = () => {
     });
   }, [tasks]);
 
-  // Close quick date picker when tapping outside
-  useEffect(() => {
-    if (!showInputDatePicker) return;
+  // Close quick date picker when tapping outside (Now handled by DatePickerPopover)
+  // but we still want to close if clicking completely outside the popover's concern if needed
+  // actually, DatePickerPopover handles its own close. We just need to pass onClose.
 
-    const handlePointerDown = (event: PointerEvent) => {
-      const target = event.target as Node;
-      if (
-        quickDatePickerRef.current?.contains(target) ||
-        quickDateButtonRef.current?.contains(target)
-      ) {
-        return;
-      }
-      setShowInputDatePicker(false);
-    };
-
-    window.addEventListener('pointerdown', handlePointerDown);
-    return () => window.removeEventListener('pointerdown', handlePointerDown);
-  }, [showInputDatePicker]);
 
   // Nudge action handler
   const handleNudgeAction = useCallback(
@@ -319,6 +308,15 @@ const KlaraApp = () => {
     }
   };
 
+  const handleDismissSuggestions = useCallback(
+    async (taskId: string) => {
+      await dismissAISuggestions(taskId);
+      toggleTaskExpansion(taskId, false);
+      showToast('Suggestions dismissed', 'info');
+    },
+    [dismissAISuggestions, toggleTaskExpansion, showToast]
+  );
+
   const handleAddManualSubTask = async (taskId: string, text: string) => {
     await addSubTask(taskId, text);
   };
@@ -381,29 +379,12 @@ const KlaraApp = () => {
     setDraggedTaskId(null);
   };
 
-  // Quick Date Helpers for Input
-  const setInputDateQuick = (
-    type: 'today' | 'tomorrow' | 'this-weekend' | 'next-week' | 'custom',
-    customDate?: string
-  ) => {
-    if (type === 'custom' && customDate) {
-      setInputDueDate(customDate);
-    } else {
-      const d = new Date();
-      if (type === 'tomorrow') d.setDate(d.getDate() + 1);
-      if (type === 'this-weekend') {
-        const day = d.getDay();
-        const diff = day === 6 ? 7 : 6 - day;
-        d.setDate(d.getDate() + diff);
-      }
-      if (type === 'next-week') {
-        const day = d.getDay();
-        const diff = day === 0 ? 1 : 8 - day;
-        d.setDate(d.getDate() + diff);
-      }
-      setInputDueDate(d.toISOString().split('T')[0]);
-    }
+  // Quick Date Helpers for Input - simplified now that DatePickerPopover handles logic
+  const handleInputDateSelect = (dateStr: string | null) => {
+    setInputDueDate(dateStr);
     setShowInputDatePicker(false);
+    // Refocus input after selection
+    setTimeout(() => inputRef.current?.focus(), 50);
   };
 
   // Focus input handler
@@ -547,6 +528,7 @@ const KlaraApp = () => {
                   handleUpdateDate={handleUpdateDate}
                   handleToggleFocused={handleToggleFocused}
                   handleEditTask={handleEditTask}
+                  handleDismissSuggestions={handleDismissSuggestions}
                   isTaskExpanded={isTaskExpanded}
                   onToggleTaskExpanded={toggleTaskExpansion}
                   nudgeMap={nudgeMap}
@@ -574,6 +556,7 @@ const KlaraApp = () => {
                   handleUpdateDate={handleUpdateDate}
                   handleToggleFocused={handleToggleFocused}
                   handleEditTask={handleEditTask}
+                  handleDismissSuggestions={handleDismissSuggestions}
                   isTaskExpanded={isTaskExpanded}
                   onToggleTaskExpanded={toggleTaskExpansion}
                   nudgeMap={nudgeMap}
@@ -601,6 +584,7 @@ const KlaraApp = () => {
                   handleUpdateDate={handleUpdateDate}
                   handleToggleFocused={handleToggleFocused}
                   handleEditTask={handleEditTask}
+                  handleDismissSuggestions={handleDismissSuggestions}
                   isTaskExpanded={isTaskExpanded}
                   onToggleTaskExpanded={toggleTaskExpansion}
                   nudgeMap={nudgeMap}
@@ -629,6 +613,7 @@ const KlaraApp = () => {
                   handleUpdateDate={handleUpdateDate}
                   handleToggleFocused={handleToggleFocused}
                   handleEditTask={handleEditTask}
+                  handleDismissSuggestions={handleDismissSuggestions}
                   isTaskExpanded={isTaskExpanded}
                   onToggleTaskExpanded={toggleTaskExpansion}
                   nudgeMap={nudgeMap}
@@ -713,56 +698,14 @@ const KlaraApp = () => {
 
                   {/* Quick Input Date Picker Popover */}
                   {showInputDatePicker && (
-                    <div
-                      ref={quickDatePickerRef}
-                      className="absolute bottom-full right-0 mb-2 bg-white rounded-xl shadow-xl border border-stone-100 p-2 min-w-[140px] z-50 flex flex-col gap-1 animate-in fade-in zoom-in-95 duration-200"
-                    >
-                        <button
-                          type="button"
-                          onClick={() => setInputDateQuick('today')}
-                          className="text-left px-3 py-2 text-[13px] text-stone-600 hover:bg-stone-50 rounded-lg transition-colors"
-                        >
-                          Today
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setInputDateQuick('tomorrow')}
-                          className="text-left px-3 py-2 text-[13px] text-stone-600 hover:bg-stone-50 rounded-lg transition-colors"
-                        >
-                          Tomorrow
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setInputDateQuick('this-weekend')}
-                          className="text-left px-3 py-2 text-[13px] text-stone-600 hover:bg-stone-50 rounded-lg transition-colors"
-                        >
-                          This Weekend
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setInputDateQuick('next-week')}
-                          className="text-left px-3 py-2 text-[13px] text-stone-600 hover:bg-stone-50 rounded-lg transition-colors"
-                        >
-                          Next Week
-                        </button>
-
-                        <div className="h-px bg-stone-100 my-0.5"></div>
-
-                        <div className="relative">
-                          <input
-                            type="date"
-                            className="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-10"
-                            onChange={e => setInputDateQuick('custom', e.target.value)}
-                          />
-                          <button
-                            type="button"
-                            className="w-full text-left px-3 py-2 text-[13px] text-stone-600 hover:bg-stone-50 rounded-lg transition-colors flex justify-between items-center"
-                          >
-                            <span>Pick Date...</span>
-                            <Calendar size={10} className="opacity-50" />
-                          </button>
-                        </div>
-                      </div>
+                    <div className="absolute bottom-full right-0 mb-2 z-50">
+                      <DatePickerPopover
+                        selectedDate={inputDueDate}
+                        onSelect={handleInputDateSelect}
+                        onClose={() => setShowInputDatePicker(false)}
+                        triggerRef={quickDateButtonRef}
+                      />
+                    </div>
                   )}
                 </div>
               )}
@@ -788,7 +731,7 @@ const KlaraApp = () => {
                 {inputDueDate && (
                   <span className="text-orange-400 bg-orange-50 px-2 py-0.5 rounded-full flex items-center gap-1">
                     <Calendar size={12} />
-                    {new Date(inputDueDate).toLocaleDateString('en-US', {
+                    {parseLocalDate(inputDueDate).toLocaleDateString('en-US', {
                       month: 'short',
                       day: 'numeric',
                     })}

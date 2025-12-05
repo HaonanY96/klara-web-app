@@ -24,6 +24,7 @@ interface QuadrantSectionProps {
   handleUpdateDate: (id: string, date: string | null) => void;
   handleToggleFocused?: (id: string) => void;
   handleEditTask?: (id: string) => void;
+  handleDismissSuggestions: (id: string) => void;
   /** Nudge map for tasks */
   nudgeMap?: Map<string, TaskNudge[]>;
   /** Handler for nudge actions */
@@ -57,6 +58,7 @@ const QuadrantSection = ({
   handleUpdateDate,
   handleToggleFocused,
   handleEditTask,
+  handleDismissSuggestions,
   nudgeMap,
   onNudgeAction,
   onNudgeDismiss,
@@ -124,6 +126,7 @@ const QuadrantSection = ({
             handleUpdateDate={handleUpdateDate}
             handleToggleFocused={handleToggleFocused}
             handleEditTask={handleEditTask}
+            onDismissSuggestions={handleDismissSuggestions}
             isExpanded={isTaskExpanded(task.id)}
             onToggleExpanded={onToggleTaskExpanded}
             nudges={nudgeMap?.get(task.id)}

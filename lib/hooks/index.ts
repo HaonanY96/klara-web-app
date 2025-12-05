@@ -7,3 +7,4 @@ export { useReflections } from './useReflections';
 export { useUserPreferences, getToneInstructions } from './useUserPreferences';
 export { useStateInference } from './useStateInference';
 export type { SimplifiedStateGroup } from './useStateInference';
+export { useIsDesktop } from './useIsDesktop';

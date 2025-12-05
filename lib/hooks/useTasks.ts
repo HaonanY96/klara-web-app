@@ -53,6 +53,7 @@ interface UseTasksReturn {
   addAllSubTasks: (taskId: string, texts: string[]) => Promise<void>;
   toggleSubTask: (taskId: string, subTaskId: string) => Promise<void>;
   deleteSubTask: (taskId: string, subTaskId: string) => Promise<void>;
+  dismissAISuggestions: (taskId: string) => Promise<void>;
 
   // Refresh
   refresh: () => Promise<void>;
@@ -256,6 +257,7 @@ export function useTasks(): UseTasksReturn {
   const addAllSubTasks = useCallback(
     async (taskId: string, texts: string[]) => {
       await subTaskRepository.createMany(taskId, texts, true);
+      await taskRepository.markSuggestionsConsumed(taskId);
       // Clear AI suggestions from local state
       setTasks(prev => prev.map(t => (t.id === taskId ? { ...t, aiSuggestions: [] } : t)));
       await loadTasks();
@@ -274,6 +276,15 @@ export function useTasks(): UseTasksReturn {
   const deleteSubTask = useCallback(
     async (taskId: string, subTaskId: string) => {
       await subTaskRepository.delete(subTaskId);
+      await loadTasks();
+    },
+    [loadTasks]
+  );
+
+  const dismissAISuggestions = useCallback(
+    async (taskId: string) => {
+      await taskRepository.clearAISuggestions(taskId);
+      setTasks(prev => prev.map(t => (t.id === taskId ? { ...t, aiSuggestions: [] } : t)));
       await loadTasks();
     },
     [loadTasks]
@@ -300,6 +311,7 @@ export function useTasks(): UseTasksReturn {
     addAllSubTasks,
     toggleSubTask,
     deleteSubTask,
+    dismissAISuggestions,
     refresh: loadTasks,
   };
 }

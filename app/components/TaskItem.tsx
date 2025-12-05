@@ -12,13 +12,14 @@ import {
   Trash2,
   Star,
 } from 'lucide-react';
-import { formatDueDate, isOverdue, getNextWeekday, toDateString } from '@/lib/utils/date';
-import { addDays } from 'date-fns';
+import { formatDueDate, isOverdue, toDateString } from '@/lib/utils/date';
 import type { TaskWithDetails, TaskNudge, NudgeAction } from '@/types';
 import TaskBadge from './TaskBadge';
 import NudgeCard from './NudgeCard';
 import { createPortal } from 'react-dom';
 import TaskContextMenu from './TaskContextMenu';
+import { useIsDesktop } from '@/lib/hooks/useIsDesktop';
+import { DatePickerPopover } from './DatePickerPopover';
 
 interface TaskItemProps {
   task: TaskWithDetails;
@@ -43,6 +44,8 @@ interface TaskItemProps {
   onNudgeAction?: (taskId: string, action: NudgeAction) => void;
   /** Handler for nudge dismiss */
   onNudgeDismiss?: (taskId: string) => void;
+  /** Handler when user dismisses AI suggestions */
+  onDismissSuggestions?: (taskId: string) => void;
 }
 
 const TaskItem = ({
@@ -63,11 +66,14 @@ const TaskItem = ({
   nudges = [],
   onNudgeAction,
   onNudgeDismiss,
+  onDismissSuggestions,
 }: TaskItemProps) => {
+  const isDesktop = useIsDesktop();
   const [manualInput, setManualInput] = useState('');
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [datePickerPosition, setDatePickerPosition] = useState<{
-    top: number;
+    top?: number;
+    bottom?: number;
     left: number;
   } | null>(null);
 
@@ -102,68 +108,35 @@ const TaskItem = ({
   const completedSub = task.subTasks.filter(t => t.completed).length;
   const progress = totalSub > 0 ? Math.round((completedSub / totalSub) * 100) : 0;
 
-  // Date quick set handler
-  const setDateQuick = (
-    type: 'today' | 'tomorrow' | 'this-weekend' | 'next-week' | 'custom' | 'clear',
-    customDate?: string
-  ) => {
-    if (type === 'clear') {
-      handleUpdateDate(task.id, null);
-    } else if (type === 'custom' && customDate) {
-      handleUpdateDate(task.id, customDate);
-    } else {
-      let date: Date;
-      const today = new Date();
-
-      switch (type) {
-        case 'today':
-          date = today;
-          break;
-        case 'tomorrow':
-          date = addDays(today, 1);
-          break;
-        case 'this-weekend':
-          date = getNextWeekday(6); // Saturday
-          break;
-        case 'next-week':
-          date = getNextWeekday(1); // Monday
-          break;
-        default:
-          date = today;
-      }
-
-      handleUpdateDate(task.id, toDateString(date));
-    }
-    closeDatePicker(true); // Force close after selection
-  };
-
-  const closeDatePicker = (force = false) => {
-    // Debounce: prevent close if opened less than 300ms ago (mobile touch issue)
-    if (!force && Date.now() - datePickerOpenTimeRef.current < 300) {
-      return;
-    }
-    setShowDatePicker(false);
-    setDatePickerPosition(null);
-  };
-
+  // Date Picker Logic
   const getDatePickerAnchor = () => {
     if (dateButtonRef.current && typeof window !== 'undefined') {
       const rect = dateButtonRef.current.getBoundingClientRect();
       const offset = 8;
-      const maxLeft = window.innerWidth - 220;
+      const maxLeft = window.innerWidth - 240;
+      const left = Math.max(16, Math.min(rect.left, maxLeft));
+
+      // Estimated height: quick menu ~200px, expanded calendar ~500px
+      // Add extra buffer for mobile browser UI (address bar, bottom nav)
+      const POPOVER_HEIGHT = 550;
+      const SAFE_BOTTOM_MARGIN = 120; // Extra space for mobile browser chrome
+      const spaceBelow = window.innerHeight - rect.bottom - SAFE_BOTTOM_MARGIN;
+
+      // Prefer showing above on mobile to avoid address bar issues
+      if (spaceBelow < POPOVER_HEIGHT && rect.top > 280) {
+        return {
+          bottom: window.innerHeight - rect.top + offset,
+          left,
+        };
+      }
+
+      // Default to below
       return {
         top: rect.bottom + offset,
-        left: Math.max(16, Math.min(rect.left, maxLeft)),
+        left,
       };
     }
-    if (typeof window !== 'undefined') {
-      const width = Math.min(window.innerWidth - 32, 220);
-      return {
-        top: window.innerHeight / 2 - 120,
-        left: Math.max(16, (window.innerWidth - width) / 2),
-      };
-    }
-    return { top: 120, left: 16 };
+    return { top: 0, left: 0 };
   };
 
   const openDatePickerAtAnchor = () => {
@@ -174,7 +147,7 @@ const TaskItem = ({
 
   const handleDateButtonClick = () => {
     if (showDatePicker) {
-      closeDatePicker();
+      setShowDatePicker(false);
     } else {
       openDatePickerAtAnchor();
     }
@@ -185,23 +158,13 @@ const TaskItem = ({
     openDatePickerAtAnchor();
   };
 
-  useEffect(() => {
-    if (!showDatePicker) return;
-
-    const handlePointerDown = (event: PointerEvent) => {
-      const target = event.target as Node;
-      if (
-        datePickerContentRef.current?.contains(target) ||
-        dateButtonRef.current?.contains(target)
-      ) {
-        return;
-      }
-      closeDatePicker(true);
-    };
-
-    window.addEventListener('pointerdown', handlePointerDown);
-    return () => window.removeEventListener('pointerdown', handlePointerDown);
-  }, [showDatePicker]);
+  const handleDesktopTaskDateSelect = (date?: Date) => {
+    if (date) {
+      handleUpdateDate(task.id, toDateString(date));
+    } else {
+      handleUpdateDate(task.id, null);
+    }
+  };
 
   const handleEditTaskRequest = () => {
     setShowContextMenu(false);
@@ -435,6 +398,7 @@ const TaskItem = ({
                   <button
                     ref={dateButtonRef}
                     onClick={handleDateButtonClick}
+                    onTouchStart={e => e.stopPropagation()} // Prevent triggering long-press on parent
                     className="flex items-center gap-1.5 text-[13px] text-stone-400 hover:text-orange-400 transition-colors font-medium tracking-wide"
                   >
                     <Calendar size={14} />
@@ -495,13 +459,22 @@ const TaskItem = ({
                         {suggestion}
                       </div>
                     ))}
-                    <div className="pt-1.5">
+                    <div className="pt-1.5 flex flex-wrap items-center gap-2">
                       <button
                         onClick={() => handleAddAllSuggestions(task.id)}
                         className="text-[12px] bg-orange-100/50 hover:bg-orange-100 text-orange-600 px-2.5 py-1.5 rounded-md font-medium tracking-wide transition-colors uppercase"
                       >
                         Add all as tasks
                       </button>
+                      {onDismissSuggestions && (
+                        <button
+                          type="button"
+                          onClick={() => onDismissSuggestions(task.id)}
+                          className="text-[12px] text-stone-400 hover:text-stone-600 font-medium tracking-wide uppercase"
+                        >
+                          Dismiss
+                        </button>
+                      )}
                     </div>
                   </div>
                 )}
@@ -533,67 +506,30 @@ const TaskItem = ({
         </div>
       </div>
 
-      {/* Date Picker Portal */}
+      {/* Date Picker Popover */}
       {showDatePicker &&
         datePickerPosition &&
         typeof document !== 'undefined' &&
         createPortal(
           <div className="fixed inset-0 z-100 bg-black/50">
             <div
-              ref={datePickerContentRef}
-              className="absolute bg-white rounded-lg shadow-xl border border-stone-100 p-2 min-w-[200px] flex flex-col gap-1 animate-in fade-in zoom-in-95 duration-200"
-              style={{ top: datePickerPosition.top, left: datePickerPosition.left }}
+              style={{
+                position: 'absolute',
+                top: datePickerPosition.top,
+                bottom: datePickerPosition.bottom,
+                left: datePickerPosition.left,
+              }}
+              onClick={e => e.stopPropagation()} // Prevent closing when clicking inside
             >
-              <button
-                onClick={() => setDateQuick('today')}
-                className="text-left px-3 py-1.5 text-[12px] text-stone-600 hover:bg-stone-50 rounded transition-colors"
-              >
-                Today
-              </button>
-              <button
-                onClick={() => setDateQuick('tomorrow')}
-                className="text-left px-3 py-1.5 text-[12px] text-stone-600 hover:bg-stone-50 rounded transition-colors"
-              >
-                Tomorrow
-              </button>
-              <button
-                onClick={() => setDateQuick('this-weekend')}
-                className="text-left px-3 py-1.5 text-[12px] text-stone-600 hover:bg-stone-50 rounded transition-colors"
-              >
-                This Weekend
-              </button>
-              <button
-                onClick={() => setDateQuick('next-week')}
-                className="text-left px-3 py-1.5 text-[12px] text-stone-600 hover:bg-stone-50 rounded transition-colors"
-              >
-                Next Week
-              </button>
-
-              <div className="h-px bg-stone-100 my-0.5"></div>
-
-              <div className="relative">
-                <input
-                  type="date"
-                  className="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-10"
-                  onChange={e => setDateQuick('custom', e.target.value)}
-                />
-                <button className="w-full text-left px-3 py-1.5 text-[12px] text-stone-600 hover:bg-stone-50 rounded transition-colors flex justify-between items-center">
-                  <span>Pick Date...</span>
-                  <Calendar size={10} className="opacity-50" />
-                </button>
-              </div>
-
-              {task.dueDate && (
-                <>
-                  <div className="h-px bg-stone-100 my-0.5"></div>
-                  <button
-                    onClick={() => setDateQuick('clear')}
-                    className="text-left px-3 py-1.5 text-[12px] text-rose-400 hover:bg-rose-50 rounded transition-colors"
-                  >
-                    Clear Date
-                  </button>
-                </>
-              )}
+              <DatePickerPopover
+                selectedDate={task.dueDate}
+                onSelect={dateStr => {
+                  handleUpdateDate(task.id, dateStr);
+                  setShowDatePicker(false);
+                }}
+                onClose={() => setShowDatePicker(false)}
+                triggerRef={dateButtonRef}
+              />
             </div>
           </div>,
           document.body

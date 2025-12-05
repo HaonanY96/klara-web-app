@@ -5,3 +5,4 @@
 export * from './date';
 export * from './uuid';
 export * from './taskClassification';
+export * from './taskSignature';
