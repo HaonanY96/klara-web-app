@@ -8,7 +8,7 @@ import type { Task } from '@/types';
 
 /**
  * History Page
- * 
+ *
  * Displays all completed tasks grouped by date
  */
 export default function HistoryPage() {
@@ -32,35 +32,35 @@ export default function HistoryPage() {
   // Group tasks by date
   const groupedTasks = React.useMemo(() => {
     const groups: Record<string, Task[]> = {};
-    
+
     tasks.forEach(task => {
       if (!task.completedAt) return;
-      
+
       const date = new Date(task.completedAt);
       const today = new Date();
       const yesterday = new Date(today);
       yesterday.setDate(yesterday.getDate() - 1);
-      
+
       let dateKey: string;
-      
+
       if (date.toDateString() === today.toDateString()) {
         dateKey = 'Today';
       } else if (date.toDateString() === yesterday.toDateString()) {
         dateKey = 'Yesterday';
       } else {
-        dateKey = date.toLocaleDateString('en-US', { 
-          month: 'short', 
+        dateKey = date.toLocaleDateString('en-US', {
+          month: 'short',
           day: 'numeric',
-          year: date.getFullYear() !== today.getFullYear() ? 'numeric' : undefined
+          year: date.getFullYear() !== today.getFullYear() ? 'numeric' : undefined,
         });
       }
-      
+
       if (!groups[dateKey]) {
         groups[dateKey] = [];
       }
       groups[dateKey].push(task);
     });
-    
+
     return groups;
   }, [tasks]);
 
@@ -69,11 +69,10 @@ export default function HistoryPage() {
   return (
     <div className="min-h-screen bg-[#FDFCF8]">
       <div className="max-w-md mx-auto min-h-screen bg-white/50 backdrop-blur-3xl shadow-[0_0_50px_-10px_rgba(0,0,0,0.02)]">
-        
         {/* Header */}
         <header className="sticky top-0 bg-white/90 backdrop-blur-xl z-10 px-5 pt-12 pb-4 border-b border-stone-100">
           <div className="flex items-center gap-4">
-            <Link 
+            <Link
               href="/"
               className="w-10 h-10 -ml-2 flex items-center justify-center text-stone-400 hover:text-stone-600 transition-colors rounded-xl hover:bg-stone-100"
             >
@@ -105,7 +104,7 @@ export default function HistoryPage() {
                   </h2>
                   <div className="space-y-2">
                     {groupedTasks[dateKey].map(task => (
-                      <div 
+                      <div
                         key={task.id}
                         className="flex items-start gap-3 p-3 bg-white rounded-xl border border-stone-100"
                       >
@@ -135,4 +134,3 @@ export default function HistoryPage() {
     </div>
   );
 }
-

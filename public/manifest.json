@@ -1,6 +1,6 @@
 {
-  "name": "Kino",
-  "short_name": "Kino",
+  "name": "Klara",
+  "short_name": "Klara",
   "description": "A warm, AI-powered task companion that helps you stay focused without stress",
   "start_url": "/",
   "display": "standalone",
@@ -61,4 +61,3 @@
   "lang": "en",
   "dir": "ltr"
 }
-

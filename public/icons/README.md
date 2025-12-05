@@ -13,7 +13,7 @@ Place the following icon files in this directory:
 
 ## Icon Requirements
 
-- Use the Kino brand color: #FB923C (orange)
+- Use the Klara brand color: #FB923C (orange)
 - Simple, recognizable design
 - Works well at small sizes
 - Consider using a stylized "K" or sun motif

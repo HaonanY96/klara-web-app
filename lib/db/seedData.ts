@@ -1,14 +1,14 @@
 /**
  * Seed data for first-time users
- * These educational tasks demonstrate Kino's features while embodying our values:
+ * These educational tasks demonstrate Klara's features while embodying our values:
  * - Lightweight & non-intrusive
  * - Companionship
  * - Recording & Growth
  */
 
-import type { Task, SubTask } from '@/types';
-
-const generateId = () => crypto.randomUUID();
+// Note: Task and SubTask types are defined locally in SeedTask/SeedSubTask
+// to avoid circular dependencies with the main type definitions
+import { generateId } from '@/lib/utils';
 
 export interface SeedTask {
   text: string;
@@ -28,44 +28,42 @@ export interface SeedTask {
 export const seedTasks: SeedTask[] = [
   {
     // Do First quadrant - Welcome & core features
-    text: "Welcome to Kino ☀️ Tap me ✨",
+    text: 'Welcome to Klara ☀️ Tap me ✨',
     importance: 'high',
     urgency: 'high',
     isPinned: true,
     isFocused: true,
     subTasks: [
-      { text: "You found it! Tasks expand to show details", completed: true },
-      { text: "Try the ⭐ button to focus on what matters", completed: false },
-      { text: "Swipe right to pin, left to let go", completed: false },
+      { text: 'You found it! Tasks expand to show details', completed: true },
+      { text: 'Try the ⭐ button to focus on what matters', completed: false },
+      { text: 'Swipe right to pin, left to let go', completed: false },
     ],
     aiSuggestions: [],
   },
   {
     // Schedule quadrant - Growth & AI features
-    text: "Plan something meaningful",
+    text: 'Plan something meaningful',
     importance: 'high',
     urgency: 'low',
     subTasks: [],
     aiSuggestions: [
-      "Break it into smaller steps",
-      "Set a realistic timeline",
-      "Identify the first action",
-      "Celebrate small wins along the way",
+      'Break it into smaller steps',
+      'Set a realistic timeline',
+      'Identify the first action',
+      'Celebrate small wins along the way',
     ],
   },
   {
     // Quick Tasks quadrant - Lightweight philosophy
-    text: "One small step today",
+    text: 'One small step today',
     importance: 'low',
     urgency: 'high',
-    subTasks: [
-      { text: "Small tasks matter too ✨", completed: false },
-    ],
+    subTasks: [{ text: 'Small tasks matter too ✨', completed: false }],
     aiSuggestions: [],
   },
   {
     // Later quadrant - Teaching gesture & letting go
-    text: "Swipe left on me to let go 👋",
+    text: 'Swipe left on me to let go 👋',
     importance: 'low',
     urgency: 'low',
     subTasks: [],
@@ -78,7 +76,7 @@ export const seedTasks: SeedTask[] = [
  */
 export function isFirstLaunch(): boolean {
   if (typeof window === 'undefined') return false;
-  return localStorage.getItem('kino_onboarded') !== 'true';
+  return localStorage.getItem('klara_onboarded') !== 'true';
 }
 
 /**
@@ -86,7 +84,7 @@ export function isFirstLaunch(): boolean {
  */
 export function markOnboarded(): void {
   if (typeof window === 'undefined') return;
-  localStorage.setItem('kino_onboarded', 'true');
+  localStorage.setItem('klara_onboarded', 'true');
 }
 
 /**
@@ -126,7 +124,7 @@ export function createSeedTasks(): { tasks: SeedTaskData[]; subTasks: SeedSubTas
   seedTasks.forEach((seed, index) => {
     const taskId = generateId();
     const timestamp = new Date(now.getTime() - index * 1000).toISOString();
-    
+
     // Create the task data
     const task: SeedTaskData = {
       id: taskId,
@@ -145,7 +143,7 @@ export function createSeedTasks(): { tasks: SeedTaskData[]; subTasks: SeedSubTas
     tasks.push(task);
 
     // Create subtasks
-    seed.subTasks.forEach((st) => {
+    seed.subTasks.forEach(st => {
       const subTask: SeedSubTaskData = {
         id: generateId(),
         taskId,
@@ -159,4 +157,3 @@ export function createSeedTasks(): { tasks: SeedTaskData[]; subTasks: SeedSubTas
 
   return { tasks, subTasks };
 }
-

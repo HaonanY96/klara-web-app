@@ -1,9 +1,9 @@
 /**
  * State Inference Service
- * 
+ *
  * Analyzes user behavior signals to infer their current state.
  * This helps AI adjust its tone and suggestions appropriately.
- * 
+ *
  * Based on PRD 4.5.2 State Recognition Mechanism:
  * - Completion rate → energized/low
  * - Procrastination signals → avoidant
@@ -11,9 +11,9 @@
  * - Task granularity → needs_breakdown
  */
 
-import type { 
-  InferredUserState, 
-  InferredStateType, 
+import type {
+  InferredUserState,
+  InferredStateType,
   BehavioralSignal,
   TaskWithDetails,
 } from '@/types';
@@ -52,7 +52,7 @@ const THRESHOLDS = {
  */
 function calculateCompletionRate(tasks: TaskWithDetails[]): number {
   const today = new Date().toISOString().split('T')[0];
-  
+
   // Get tasks that are either incomplete or completed today
   const todaysTasks = tasks.filter(t => {
     // Include incomplete tasks created before or today
@@ -64,8 +64,8 @@ function calculateCompletionRate(tasks: TaskWithDetails[]): number {
 
   if (todaysTasks.length === 0) return 0.5; // Default to neutral if no tasks
 
-  const completedToday = todaysTasks.filter(t => 
-    t.completed && t.completedAt?.startsWith(today)
+  const completedToday = todaysTasks.filter(
+    t => t.completed && t.completedAt?.startsWith(today)
   ).length;
 
   return completedToday / todaysTasks.length;
@@ -74,16 +74,17 @@ function calculateCompletionRate(tasks: TaskWithDetails[]): number {
 /**
  * Check for procrastination signals (tasks without deadline sitting for a while)
  */
-function checkProcrastinationSignals(tasks: TaskWithDetails[]): { isAvoidant: boolean; delayedTasks: number } {
+function checkProcrastinationSignals(tasks: TaskWithDetails[]): {
+  isAvoidant: boolean;
+  delayedTasks: number;
+} {
   const sevenDaysAgo = new Date();
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
   const sevenDaysAgoStr = sevenDaysAgo.toISOString();
 
   // Count incomplete tasks without deadline that are older than 7 days
-  const delayedTasks = tasks.filter(t => 
-    !t.completed && 
-    !t.dueDate && 
-    t.createdAt < sevenDaysAgoStr
+  const delayedTasks = tasks.filter(
+    t => !t.completed && !t.dueDate && t.createdAt < sevenDaysAgoStr
   ).length;
 
   return {
@@ -104,10 +105,8 @@ function isLateNightUsage(): boolean {
  * Check for tasks that might need breakdown
  */
 function checkNeedsBreakdown(tasks: TaskWithDetails[]): boolean {
-  return tasks.some(t => 
-    !t.completed &&
-    t.text.length > THRESHOLDS.COMPLEX_TASK_LENGTH &&
-    t.subTasks.length === 0
+  return tasks.some(
+    t => !t.completed && t.text.length > THRESHOLDS.COMPLEX_TASK_LENGTH && t.subTasks.length === 0
   );
 }
 
@@ -120,7 +119,7 @@ function generateSignals(tasks: TaskWithDetails[]): BehavioralSignal[] {
 
   // 1. Completion rate signals
   const completionRate = calculateCompletionRate(tasks);
-  
+
   if (completionRate >= THRESHOLDS.HIGH_COMPLETION_RATE) {
     signals.push({
       type: 'completion_rate',
@@ -174,7 +173,10 @@ function generateSignals(tasks: TaskWithDetails[]): BehavioralSignal[] {
 /**
  * Determine the primary state from signals
  */
-function determineState(signals: BehavioralSignal[]): { state: InferredStateType; confidence: number } {
+function determineState(signals: BehavioralSignal[]): {
+  state: InferredStateType;
+  confidence: number;
+} {
   if (signals.length === 0) {
     return { state: 'okay', confidence: 0.5 };
   }
@@ -227,16 +229,14 @@ function determineState(signals: BehavioralSignal[]): { state: InferredStateType
 
   // Calculate confidence (normalized to 0-1)
   const maxPossibleScore = signals.length * SIGNAL_WEIGHTS.high;
-  const confidence = maxPossibleScore > 0 
-    ? Math.min(maxScore / maxPossibleScore, 1)
-    : 0.5;
+  const confidence = maxPossibleScore > 0 ? Math.min(maxScore / maxPossibleScore, 1) : 0.5;
 
   return { state: primaryState, confidence };
 }
 
 /**
  * Infer user state from task data
- * 
+ *
  * @param tasks - All user tasks with details
  * @returns Inferred user state with confidence and signals
  */
@@ -289,4 +289,3 @@ export function getStateDescription(state: InferredStateType): string {
       return '';
   }
 }
-

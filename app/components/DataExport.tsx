@@ -2,10 +2,10 @@
 
 import React, { useState } from 'react';
 import { Download, FileText, FileJson, Loader2, Check } from 'lucide-react';
-import { 
-  downloadTasksCSV, 
-  downloadReflectionsMarkdown, 
-  downloadAllJSON 
+import {
+  downloadTasksCSV,
+  downloadReflectionsMarkdown,
+  downloadAllJSON,
 } from '@/lib/services/exportService';
 
 type ExportStatus = 'idle' | 'loading' | 'success' | 'error';
@@ -38,11 +38,12 @@ const ExportButton = ({ label, icon, onClick }: ExportButtonProps) => {
       disabled={status === 'loading'}
       className={`
         flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all
-        ${status === 'success' 
-          ? 'bg-emerald-50 text-emerald-600 border border-emerald-200' 
-          : status === 'error'
-          ? 'bg-rose-50 text-rose-600 border border-rose-200'
-          : 'bg-white text-stone-600 border border-stone-200 hover:bg-stone-50 hover:border-stone-300'
+        ${
+          status === 'success'
+            ? 'bg-emerald-50 text-emerald-600 border border-emerald-200'
+            : status === 'error'
+              ? 'bg-rose-50 text-rose-600 border border-rose-200'
+              : 'bg-white text-stone-600 border border-stone-200 hover:bg-stone-50 hover:border-stone-300'
         }
         disabled:opacity-50 disabled:cursor-not-allowed
       `}
@@ -66,11 +67,11 @@ const DataExport = () => {
         <Download size={16} className="text-stone-400" />
         <span className="text-sm font-medium text-stone-700 font-heading">Export Your Data</span>
       </div>
-      
+
       <p className="text-[13px] text-stone-500 mb-4 font-light">
         Download your tasks and reflections. Your data stays on your device.
       </p>
-      
+
       <div className="flex flex-wrap gap-3">
         <ExportButton
           label="Tasks (CSV)"
@@ -93,4 +94,3 @@ const DataExport = () => {
 };
 
 export default DataExport;
-

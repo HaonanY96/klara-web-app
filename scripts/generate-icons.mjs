@@ -20,14 +20,10 @@ console.log('Generating PWA icons...');
 
 for (const size of sizes) {
   const outputPath = join(outputDir, `icon-${size}x${size}.png`);
-  
-  await sharp(svgBuffer)
-    .resize(size, size)
-    .png()
-    .toFile(outputPath);
-  
+
+  await sharp(svgBuffer).resize(size, size).png().toFile(outputPath);
+
   console.log(`✓ Generated ${size}x${size}`);
 }
 
 console.log('\nAll icons generated successfully!');
-

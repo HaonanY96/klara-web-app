@@ -1,24 +1,29 @@
 /**
  * AI Service Entry Point
- * 
+ *
  * Provides the Gemini AI service for subtask suggestions.
  */
 
 import type { AIService, SuggestSubtasksRequest, SuggestSubtasksResponse } from './types';
 import { getGeminiService } from './gemini';
 
-export type { AIService, AIProvider, SuggestSubtasksRequest, SuggestSubtasksResponse } from './types';
+export type {
+  AIService,
+  AIProvider,
+  SuggestSubtasksRequest,
+  SuggestSubtasksResponse,
+} from './types';
 
 /**
  * Get the AI service
  */
 export function getAIService(): AIService {
   const gemini = getGeminiService();
-  
+
   if (gemini.isAvailable()) {
     return gemini;
   }
-  
+
   // Return a dummy service that always fails
   return {
     provider: 'gemini',

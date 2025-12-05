@@ -1,24 +1,34 @@
 /**
  * Data Export Service
- * 
+ *
  * Provides export functionality for tasks and reflections.
  */
 
 import { exportAllData } from '@/lib/db';
-import { format, parseISO } from 'date-fns';
+import { format } from 'date-fns';
 import { parseLocalDate, getTodayDateString, formatDateTime, formatTime } from '@/lib/utils/date';
-import type { Task, Reflection } from '@/types';
 
 /**
  * Export tasks as CSV
  */
 export async function exportTasksAsCSV(): Promise<string> {
   const { tasks } = await exportAllData();
-  
+
   // CSV Header with BOM for Excel UTF-8 compatibility
   const BOM = '\uFEFF';
-  const headers = ['ID', 'Task', 'Completed', 'Importance', 'Urgency', 'Due Date', 'Pinned', 'Focused', 'Created', 'Completed At'];
-  
+  const headers = [
+    'ID',
+    'Task',
+    'Completed',
+    'Importance',
+    'Urgency',
+    'Due Date',
+    'Pinned',
+    'Focused',
+    'Created',
+    'Completed At',
+  ];
+
   const rows = tasks.map(task => [
     task.id,
     escapeCSV(task.text),
@@ -41,10 +51,10 @@ export async function exportTasksAsCSV(): Promise<string> {
  */
 export async function exportReflectionsAsMarkdown(): Promise<string> {
   const { reflections } = await exportAllData();
-  
+
   // Sort by date descending
-  const sorted = [...reflections].sort((a, b) => 
-    parseLocalDate(b.date).getTime() - parseLocalDate(a.date).getTime()
+  const sorted = [...reflections].sort(
+    (a, b) => parseLocalDate(b.date).getTime() - parseLocalDate(a.date).getTime()
   );
 
   let markdown = '# My Reflections\n\n';
@@ -53,29 +63,29 @@ export async function exportReflectionsAsMarkdown(): Promise<string> {
 
   for (const reflection of sorted) {
     const date = format(parseLocalDate(reflection.date), 'EEEE, MMMM d, yyyy');
-    
+
     markdown += `## ${date}\n\n`;
-    
+
     // Process each entry in the reflection
     if (reflection.entries && reflection.entries.length > 0) {
       for (const entry of reflection.entries) {
         // Format time
         const time = formatTime(entry.recordedAt);
-        
+
         markdown += `### ${time}`;
-        
+
         // Add mood if present
         if (entry.mood) {
           const emoji = entry.mood === 'Flow' ? '⚡' : entry.mood === 'Drained' ? '🔋' : '☁️';
           markdown += ` ${emoji} ${entry.mood}`;
         }
         markdown += '\n\n';
-        
+
         // Add prompt if present
         if (entry.prompt) {
           markdown += `> *${entry.prompt}*\n\n`;
         }
-        
+
         // Add text
         if (entry.text) {
           markdown += `${entry.text}\n\n`;
@@ -84,7 +94,7 @@ export async function exportReflectionsAsMarkdown(): Promise<string> {
         }
       }
     }
-    
+
     markdown += '---\n\n';
   }
 
@@ -120,7 +130,7 @@ export function downloadFile(content: string, filename: string, mimeType: string
 export async function downloadTasksCSV(): Promise<void> {
   const csv = await exportTasksAsCSV();
   const date = getTodayDateString();
-  downloadFile(csv, `kino-tasks-${date}.csv`, 'text/csv;charset=utf-8');
+  downloadFile(csv, `klara-tasks-${date}.csv`, 'text/csv;charset=utf-8');
 }
 
 /**
@@ -129,7 +139,7 @@ export async function downloadTasksCSV(): Promise<void> {
 export async function downloadReflectionsMarkdown(): Promise<void> {
   const markdown = await exportReflectionsAsMarkdown();
   const date = getTodayDateString();
-  downloadFile(markdown, `kino-reflections-${date}.md`, 'text/markdown;charset=utf-8');
+  downloadFile(markdown, `klara-reflections-${date}.md`, 'text/markdown;charset=utf-8');
 }
 
 /**
@@ -138,7 +148,7 @@ export async function downloadReflectionsMarkdown(): Promise<void> {
 export async function downloadAllJSON(): Promise<void> {
   const json = await exportAllAsJSON();
   const date = getTodayDateString();
-  downloadFile(json, `kino-backup-${date}.json`, 'application/json;charset=utf-8');
+  downloadFile(json, `klara-backup-${date}.json`, 'application/json;charset=utf-8');
 }
 
 // Helper functions
@@ -153,4 +163,3 @@ function escapeCSV(value: string): string {
 function formatDateForCSV(isoString: string): string {
   return formatDateTime(isoString);
 }
-

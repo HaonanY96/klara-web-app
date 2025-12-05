@@ -1,6 +1,6 @@
 /**
  * AI Service Types
- * 
+ *
  * Shared types for AI service implementations.
  */
 
@@ -46,10 +46,10 @@ export type AIProvider = 'gemini';
 export interface AIService {
   /** Provider name */
   readonly provider: AIProvider;
-  
+
   /** Check if the service is configured and available */
   isAvailable(): boolean;
-  
+
   /** Generate subtask suggestions for a task */
   suggestSubtasks(request: SuggestSubtasksRequest): Promise<SuggestSubtasksResponse>;
 }
@@ -63,4 +63,3 @@ export interface AIConfig {
   /** Rate limit per minute */
   rateLimit: number;
 }
-

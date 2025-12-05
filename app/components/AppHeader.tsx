@@ -10,28 +10,31 @@ interface AppHeaderProps {
 
 /**
  * AppHeader Component
- * 
+ *
  * Top navigation bar with:
  * - Hamburger menu (left)
- * - Kino title centered (acts as AI status indicator)
+ * - Klara title centered (acts as AI status indicator)
  * - Date below
  */
 const AppHeader = ({ onMenuOpen, isAIOnline = true }: AppHeaderProps) => {
   // Format date on client side
   const [formattedDate, setFormattedDate] = React.useState('');
-  
+
   React.useEffect(() => {
     setFormattedDate(
-      new Date().toLocaleDateString('en-US', { 
-        weekday: 'long', 
-        month: 'long', 
-        day: 'numeric' 
+      new Date().toLocaleDateString('en-US', {
+        weekday: 'long',
+        month: 'long',
+        day: 'numeric',
       })
     );
   }, []);
 
   return (
-    <header className="pt-10 px-5 pb-4">
+    <header
+      className="fixed top-0 left-0 right-0 z-30 bg-white/95 backdrop-blur-xl px-5 pb-4 max-w-md mx-auto"
+      style={{ paddingTop: 'calc(2.5rem + var(--safe-area-inset-top))' }}
+    >
       {/* Top bar with menu and title */}
       <div className="flex items-center justify-between mb-1">
         {/* Menu button */}
@@ -42,21 +45,21 @@ const AppHeader = ({ onMenuOpen, isAIOnline = true }: AppHeaderProps) => {
         >
           <Menu size={22} strokeWidth={1.5} />
         </button>
-        
+
         {/* Centered title - AI status indicator */}
-        <h1 
+        <h1
           className={`text-2xl font-medium tracking-tight font-heading transition-colors duration-300 ${
             isAIOnline ? 'text-orange-400' : 'text-slate-400'
           }`}
           title={isAIOnline ? 'AI is online' : 'AI is offline'}
         >
-          Kino
+          Klara
         </h1>
-        
+
         {/* Spacer for balance */}
         <div className="w-10" />
       </div>
-      
+
       {/* Date */}
       <div className="text-center">
         <div className="text-[11px] font-medium tracking-wider text-stone-400 uppercase font-heading italic opacity-80">
@@ -68,4 +71,3 @@ const AppHeader = ({ onMenuOpen, isAIOnline = true }: AppHeaderProps) => {
 };
 
 export default AppHeader;
-
