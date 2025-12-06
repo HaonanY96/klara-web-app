@@ -147,6 +147,8 @@ export function getLatestMood(reflection: Reflection): MoodType | null {
 /**
  * Cached AI suggestions for a task
  */
+export type AISuggestionStatus = 'active' | 'consumed';
+
 export interface AISuggestion {
   /** Unique identifier */
   id: string;
@@ -154,6 +156,10 @@ export interface AISuggestion {
   taskId: string;
   /** List of suggested subtask texts */
   suggestions: string[];
+  /** Signature of the task when suggestions were generated */
+  taskSignature: string;
+  /** Current lifecycle status */
+  status: AISuggestionStatus;
   /** Creation timestamp (ISO 8601) */
   createdAt: string;
   /** Expiration timestamp for cache (ISO 8601) */

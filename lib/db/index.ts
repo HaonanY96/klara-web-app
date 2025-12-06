@@ -88,6 +88,26 @@ export class KlaraDatabase extends Dexie {
         await tx.table('reflections').clear();
         console.log('[Klara DB] Cleared old reflections for V4 migration (moods -> entries)');
       });
+
+    // V5: Track AI suggestion status and task signature
+    this.version(5)
+      .stores({
+        tasks:
+          'id, completed, importance, urgency, dueDate, isPinned, isFocused, createdAt, updatedAt',
+        subTasks: 'id, taskId, completed, order',
+        reflections: 'id, date',
+        aiSuggestions: 'id, taskId, expiresAt, status',
+        habitData: 'id, date',
+        userPreferences: 'id, toneStyle, updatedAt',
+      })
+      .upgrade(async tx => {
+        const aiSuggestions = tx.table('aiSuggestions');
+        await aiSuggestions.toCollection().modify(record => {
+          // Dexie mutates in place; ensure defaults exist
+          (record as { status?: string }).status = record.status ?? 'active';
+          (record as { taskSignature?: string }).taskSignature = record.taskSignature ?? '';
+        });
+      });
   }
 }
 

@@ -6,9 +6,16 @@
  */
 
 import { getDb } from '../index';
-import type { Task, CreateTask, UpdateTask, QuadrantType, TaskWithDetails } from '@/types';
+import type {
+  Task,
+  CreateTask,
+  UpdateTask,
+  QuadrantType,
+  TaskWithDetails,
+  AISuggestion,
+} from '@/types';
 import { getQuadrant } from '@/types';
-import { generateId } from '@/lib/utils';
+import { generateId, buildTaskSignature } from '@/lib/utils';
 
 // Helper to get database instance
 const db = () => getDb();
@@ -18,6 +25,34 @@ const db = () => getDb();
  */
 function now(): string {
   return new Date().toISOString();
+}
+
+function computeSignature(task: Task): string {
+  return buildTaskSignature({
+    text: task.text,
+    importance: task.importance,
+    urgency: task.urgency,
+    dueDate: task.dueDate,
+  });
+}
+
+function isActiveSuggestion(record: AISuggestion | undefined, signature: string): boolean {
+  if (!record) return false;
+  if (record.status !== 'active') {
+    return false;
+  }
+  return record.taskSignature === signature;
+}
+
+async function removeSuggestionRecord(recordId: string): Promise<void> {
+  await db().aiSuggestions.delete(recordId);
+}
+
+async function invalidateSuggestionsIfSignatureChanged(before: Task, after: Task): Promise<void> {
+  if (computeSignature(before) === computeSignature(after)) {
+    return;
+  }
+  await db().aiSuggestions.where('taskId').equals(after.id).delete();
 }
 
 /**
@@ -96,11 +131,19 @@ export const taskRepository = {
     const subTasks = await db().subTasks.where('taskId').equals(id).sortBy('order');
 
     const aiSuggestionRecord = await db().aiSuggestions.where('taskId').equals(id).first();
+    const signature = computeSignature(task);
+    let aiSuggestions: string[] = [];
+
+    if (isActiveSuggestion(aiSuggestionRecord, signature)) {
+      aiSuggestions = aiSuggestionRecord!.suggestions;
+    } else if (aiSuggestionRecord) {
+      await removeSuggestionRecord(aiSuggestionRecord.id);
+    }
 
     return {
       ...task,
       subTasks,
-      aiSuggestions: aiSuggestionRecord?.suggestions ?? [],
+      aiSuggestions,
       showSuggestions: false,
     };
   },
@@ -110,23 +153,43 @@ export const taskRepository = {
    */
   async getAllWithDetails(): Promise<TaskWithDetails[]> {
     const tasks = await this.getAll();
-    const allSubTasks = await db().subTasks.toArray();
-    const allAISuggestions = await db().aiSuggestions.toArray();
+    const [allSubTasks, allAISuggestions] = await Promise.all([
+      db().subTasks.toArray(),
+      db().aiSuggestions.toArray(),
+    ]);
 
-    return tasks.map(task => {
+    const suggestionsByTaskId = new Map<string, AISuggestion>();
+    allAISuggestions.forEach(record => suggestionsByTaskId.set(record.taskId, record));
+    const cleanupIds: string[] = [];
+
+    const taskDetails = tasks.map(task => {
       const subTasks = allSubTasks
         .filter(st => st.taskId === task.id)
         .sort((a, b) => a.order - b.order);
 
-      const aiSuggestionRecord = allAISuggestions.find(s => s.taskId === task.id);
+      const aiSuggestionRecord = suggestionsByTaskId.get(task.id);
+      const signature = computeSignature(task);
+      let aiSuggestions: string[] = [];
 
-      return {
+      if (isActiveSuggestion(aiSuggestionRecord, signature)) {
+        aiSuggestions = aiSuggestionRecord!.suggestions;
+      } else if (aiSuggestionRecord) {
+        cleanupIds.push(aiSuggestionRecord.id);
+      }
+
+      const taskWithDetails: TaskWithDetails = {
         ...task,
         subTasks,
-        aiSuggestions: aiSuggestionRecord?.suggestions ?? [],
+        aiSuggestions,
         showSuggestions: false,
       };
+
+      return taskWithDetails;
     });
+    if (cleanupIds.length) {
+      await db().aiSuggestions.bulkDelete(cleanupIds);
+    }
+    return taskDetails;
   },
 
   /**
@@ -162,6 +225,8 @@ export const taskRepository = {
         id: generateId(),
         taskId: task.id,
         suggestions: aiSuggestions,
+        taskSignature: computeSignature(task),
+        status: 'active',
         createdAt: timestamp,
         expiresAt,
       });
@@ -177,6 +242,9 @@ export const taskRepository = {
     const { id, ...updates } = data;
     const timestamp = now();
 
+    const before = await this.getById(id);
+    if (!before) throw new Error(`Task ${id} not found`);
+
     await db().tasks.update(id, {
       ...updates,
       updatedAt: timestamp,
@@ -184,6 +252,8 @@ export const taskRepository = {
 
     const updated = await this.getById(id);
     if (!updated) throw new Error(`Task ${id} not found after update`);
+
+    await invalidateSuggestionsIfSignatureChanged(before, updated);
 
     return updated;
   },
@@ -266,25 +336,55 @@ export const taskRepository = {
     importance: 'high' | 'low',
     urgency: 'high' | 'low'
   ): Promise<Task> {
+    const before = await this.getById(id);
+    if (!before) throw new Error(`Task ${id} not found`);
+
     await db().tasks.update(id, {
       importance,
       urgency,
       updatedAt: now(),
     });
 
-    return (await this.getById(id))!;
+    const updated = await this.getById(id);
+    if (!updated) throw new Error(`Task ${id} not found after quadrant update`);
+    await invalidateSuggestionsIfSignatureChanged(before, updated);
+
+    return updated;
   },
 
   /**
    * Update task due date
    */
   async updateDueDate(id: string, dueDate: string | null): Promise<Task> {
+    const before = await this.getById(id);
+    if (!before) throw new Error(`Task ${id} not found`);
+
     await db().tasks.update(id, {
       dueDate,
       updatedAt: now(),
     });
 
-    return (await this.getById(id))!;
+    const updated = await this.getById(id);
+    if (!updated) throw new Error(`Task ${id} not found after due date update`);
+    await invalidateSuggestionsIfSignatureChanged(before, updated);
+
+    return updated;
+  },
+
+  /**
+   * Remove AI suggestions for a task (used when dismissed)
+   */
+  async clearAISuggestions(taskId: string): Promise<void> {
+    await db().aiSuggestions.where('taskId').equals(taskId).delete();
+  },
+
+  /**
+   * Mark AI suggestions as consumed to prevent re-surfacing
+   */
+  async markSuggestionsConsumed(taskId: string): Promise<void> {
+    const suggestion = await db().aiSuggestions.where('taskId').equals(taskId).first();
+    if (!suggestion) return;
+    await db().aiSuggestions.update(suggestion.id, { status: 'consumed' });
   },
 
   /**

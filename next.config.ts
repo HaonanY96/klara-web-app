@@ -11,7 +11,10 @@ const withPWA = withPWAInit({
 
 const nextConfig: NextConfig = {
   /* Silence Turbopack warning when using PWA webpack config */
-  turbopack: {},
+  turbopack: {
+    /* Explicitly set root to project directory to avoid lockfile detection issues */
+    root: __dirname,
+  },
   /* Allow local network devices (e.g. phone) to access dev server */
   allowedDevOrigins: ['192.168.1.*'],
 };
