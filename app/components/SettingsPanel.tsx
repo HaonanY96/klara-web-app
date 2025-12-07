@@ -80,13 +80,22 @@ const ToneOption = ({
  * Modal panel for AI companion style settings
  */
 const SettingsPanel = ({ isOpen, onClose }: SettingsPanelProps) => {
-  const { toneStyle, updateToneStyle } = useUserPreferences();
+  const { toneStyle, enableQuadrantOrdering, updateToneStyle, updateQuadrantOrdering } =
+    useUserPreferences();
 
   const handleSelectTone = async (style: ToneStyle) => {
     try {
       await updateToneStyle(style);
     } catch (error) {
       console.error('Failed to update tone style:', error);
+    }
+  };
+
+  const handleToggleQuadrantOrdering = async (value: boolean) => {
+    try {
+      await updateQuadrantOrdering(value);
+    } catch (error) {
+      console.error('Failed to update quadrant ordering preference:', error);
     }
   };
 
@@ -137,7 +146,7 @@ const SettingsPanel = ({ isOpen, onClose }: SettingsPanelProps) => {
       <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50" onClick={onClose} />
 
       {/* Panel */}
-      <div className="fixed inset-x-4 top-1/2 -translate-y-1/2 bg-white rounded-2xl shadow-2xl z-50 max-w-md mx-auto max-h-[85vh] overflow-hidden flex flex-col">
+      <div className="fixed inset-x-4 top-1/2 -translate-y-1/2 bg-white rounded-2xl shadow-2xl z-50 max-w-xl w-full mx-auto max-h-[85vh] overflow-hidden flex flex-col border border-stone-100">
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-stone-100 shrink-0">
           <div>
@@ -154,22 +163,55 @@ const SettingsPanel = ({ isOpen, onClose }: SettingsPanelProps) => {
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-5">
-          <div className="space-y-3">
-            {toneOptions.map(option => (
-              <ToneOption
-                key={option.id}
-                {...option}
-                isSelected={toneStyle === option.id}
-                onSelect={() => handleSelectTone(option.id)}
-              />
-            ))}
+        <div className="flex-1 overflow-y-auto p-5 space-y-6">
+          <div>
+            <h3 className="text-[13px] font-semibold text-stone-500 uppercase tracking-[0.15em] pb-2 border-b border-stone-100">
+              AI Tone
+            </h3>
+            <div className="mt-3 space-y-3">
+              {toneOptions.map(option => (
+                <ToneOption
+                  key={option.id}
+                  {...option}
+                  isSelected={toneStyle === option.id}
+                  onSelect={() => handleSelectTone(option.id)}
+                />
+              ))}
+            </div>
+            <p className="text-[12px] text-stone-400 mt-3">
+              Your choice affects how AI suggestions are worded. You can change this anytime.
+            </p>
           </div>
 
-          {/* Info text */}
-          <p className="text-[12px] text-stone-400 text-center mt-5 px-4">
-            Your choice affects how AI suggestions are worded. You can change this anytime.
-          </p>
+          <div>
+            <h3 className="text-[13px] font-semibold text-stone-500 uppercase tracking-[0.15em] pb-2 border-b border-stone-100">
+              Task Ordering
+            </h3>
+            <div className="mt-3 space-y-2">
+              <div className="flex items-start justify-between gap-3 p-4 rounded-xl border-2 border-stone-100 hover:border-stone-200 transition">
+                <div className="flex-1">
+                  <div className="text-[14px] font-medium text-stone-700">Quadrant ordering</div>
+                  <p className="text-[13px] text-stone-500 mt-1">
+                    Enable manual drag-to-reorder inside quadrants (pinned stay on top). Turning this
+                    off only disables drag; your current order stays as-is. Use “Reset” to return to
+                    default ordering anytime.
+                  </p>
+                </div>
+                <label className="inline-flex items-center cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={enableQuadrantOrdering}
+                    onChange={e => handleToggleQuadrantOrdering(e.target.checked)}
+                    className="peer sr-only"
+                  />
+                  <span
+                    className="relative w-11 h-6 bg-stone-200 rounded-full peer-checked:bg-orange-400 transition-colors duration-200 after:absolute after:top-0.5 after:left-0.5 after:h-5 after:w-5 after:bg-white after:rounded-full after:shadow after:transition-transform peer-checked:after:translate-x-5"
+                    aria-hidden
+                  />
+                </label>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </>

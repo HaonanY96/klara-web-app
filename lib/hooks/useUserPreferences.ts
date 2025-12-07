@@ -23,6 +23,7 @@ interface UseUserPreferencesReturn {
   toneStyle: ToneStyle;
   hasSeenReflectionIntro: boolean;
   tasksCompletedCount: number;
+  enableQuadrantOrdering: boolean;
 
   // State
   isLoading: boolean;
@@ -31,6 +32,7 @@ interface UseUserPreferencesReturn {
   // Operations
   updateToneStyle: (style: ToneStyle) => Promise<void>;
   updateNotificationFrequency: (frequency: 'low' | 'medium' | 'high') => Promise<void>;
+  updateQuadrantOrdering: (enable: boolean) => Promise<void>;
   addFeedback: (feedback: CreateAIFeedback) => Promise<void>;
   updateInferredState: (state: InferredUserState | null) => Promise<void>;
   resetPreferences: () => Promise<void>;
@@ -76,6 +78,7 @@ export function useUserPreferences(): UseUserPreferencesReturn {
   const toneStyle = preferences?.toneStyle ?? 'gentle';
   const hasSeenReflectionIntro = preferences?.hasSeenReflectionIntro ?? false;
   const tasksCompletedCount = preferences?.tasksCompletedCount ?? 0;
+  const enableQuadrantOrdering = preferences?.enableQuadrantOrdering ?? false;
 
   // Operations
   const updateToneStyle = useCallback(async (style: ToneStyle) => {
@@ -94,6 +97,16 @@ export function useUserPreferences(): UseUserPreferencesReturn {
       setPreferences(updated);
     } catch (err) {
       console.error('[useUserPreferences] Failed to update notification frequency:', err);
+      throw err;
+    }
+  }, []);
+
+  const updateQuadrantOrdering = useCallback(async (enable: boolean) => {
+    try {
+      const updated = await userPreferencesRepository.updateQuadrantOrdering(enable);
+      setPreferences(updated);
+    } catch (err) {
+      console.error('[useUserPreferences] Failed to update quadrant ordering preference:', err);
       throw err;
     }
   }, []);
@@ -171,10 +184,12 @@ export function useUserPreferences(): UseUserPreferencesReturn {
     toneStyle,
     hasSeenReflectionIntro,
     tasksCompletedCount,
+    enableQuadrantOrdering,
     isLoading,
     error,
     updateToneStyle,
     updateNotificationFrequency,
+    updateQuadrantOrdering,
     addFeedback,
     updateInferredState,
     resetPreferences,

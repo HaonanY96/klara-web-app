@@ -7,12 +7,54 @@ interface TodaysFocusProps {
   onToggleComplete: (id: string) => void;
   onRemoveFocus: (id: string) => void;
   onTaskClick?: (id: string) => void;
+  onReorder?: (orderedIds: string[]) => void;
+  onResetOrder?: () => void;
 }
 
-const TodaysFocus = ({ tasks, onToggleComplete, onRemoveFocus, onTaskClick }: TodaysFocusProps) => {
+const TodaysFocus = ({
+  tasks,
+  onToggleComplete,
+  onRemoveFocus,
+  onTaskClick,
+  onReorder,
+  onResetOrder,
+}: TodaysFocusProps) => {
   if (tasks.length === 0) {
     return null;
   }
+
+  const [draggingId, setDraggingId] = React.useState<string | null>(null);
+  const [ordered, setOrdered] = React.useState(tasks);
+
+  React.useEffect(() => {
+    setOrdered(tasks);
+  }, [tasks]);
+
+  const reorderList = (list: TaskWithDetails[], fromId: string, toId: string) => {
+    const next = [...list];
+    const fromIndex = next.findIndex(t => t.id === fromId);
+    const toIndex = next.findIndex(t => t.id === toId);
+    if (fromIndex === -1 || toIndex === -1) return list;
+    const [item] = next.splice(fromIndex, 1);
+    next.splice(toIndex, 0, item);
+    return next;
+  };
+
+  const handleDragStart = (id: string) => {
+    setDraggingId(id);
+  };
+
+  const handleDragOver = (id: string) => {
+    if (!draggingId || draggingId === id) return;
+    setOrdered(prev => reorderList(prev, draggingId, id));
+  };
+
+  const handleDrop = () => {
+    setDraggingId(null);
+    if (onReorder) {
+      onReorder(ordered.map(t => t.id));
+    }
+  };
 
   return (
     <section className="mb-6">
@@ -22,13 +64,29 @@ const TodaysFocus = ({ tasks, onToggleComplete, onRemoveFocus, onTaskClick }: To
           Today&apos;s Focus
         </h2>
         <span className="text-[12px] text-stone-400 font-medium">{tasks.length}/3</span>
+        {onResetOrder && (
+          <button
+            onClick={onResetOrder}
+            className="ml-auto text-[12px] text-stone-400 hover:text-orange-500 font-medium underline-offset-2 hover:underline"
+          >
+            Reset order
+          </button>
+        )}
       </div>
 
       <div className="space-y-2">
-        {tasks.map(task => (
+        {ordered.map(task => (
           <div
             key={task.id}
-            className="flex items-center gap-3 bg-gradient-to-r from-orange-50 to-amber-50/50 border border-orange-100/50 rounded-xl px-4 py-3 group"
+            className="flex items-center gap-3 bg-linear-to-r from-orange-50 to-amber-50/50 border border-orange-100/50 rounded-xl px-4 py-3 group"
+            draggable={!!onReorder}
+            onDragStart={() => handleDragStart(task.id)}
+            onDragOver={e => {
+              e.preventDefault();
+              handleDragOver(task.id);
+            }}
+            onDrop={handleDrop}
+            onDragEnd={handleDrop}
           >
             <button
               onClick={() => onToggleComplete(task.id)}

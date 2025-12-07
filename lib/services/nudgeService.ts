@@ -13,6 +13,9 @@
 import type { TaskWithDetails, NudgeType, TaskNudge } from '@/types';
 import { isOverdue } from '@/lib/utils/date';
 
+const STORAGE_KEY = 'klara.nudgeCooldowns';
+const NUDGE_COOLDOWN_MS = 24 * 60 * 60 * 1000; // 24h
+
 /**
  * Configuration for nudge detection
  */
@@ -36,6 +39,52 @@ const NUDGE_PRIORITY: Record<NudgeType, number> = {
   long_pending: 3,
   needs_breakdown: 99, // No badge, lowest priority
 };
+
+type CooldownMap = Record<string, string>;
+
+function getCooldownKey(taskId: string, type: NudgeType): string {
+  return `${taskId}:${type}`;
+}
+
+function loadCooldowns(): CooldownMap {
+  if (typeof window === 'undefined') return {};
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return {};
+    return JSON.parse(raw) as CooldownMap;
+  } catch (error) {
+    console.warn('[Nudge] Failed to load cooldowns', error);
+    return {};
+  }
+}
+
+function saveCooldowns(map: CooldownMap) {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(map));
+  } catch (error) {
+    console.warn('[Nudge] Failed to persist cooldowns', error);
+  }
+}
+
+function isOnCooldown(taskId: string, type: NudgeType, map: CooldownMap, now: number): boolean {
+  const key = getCooldownKey(taskId, type);
+  const until = map[key];
+  if (!until) return false;
+  const untilTs = new Date(until).getTime();
+  if (Number.isNaN(untilTs) || untilTs <= now) {
+    delete map[key];
+    return false;
+  }
+  return true;
+}
+
+export function setNudgeCooldown(taskId: string, type: NudgeType) {
+  const map = loadCooldowns();
+  const until = new Date(Date.now() + NUDGE_COOLDOWN_MS).toISOString();
+  map[getCooldownKey(taskId, type)] = until;
+  saveCooldowns(map);
+}
 
 /**
  * Check if a task is overdue
@@ -131,6 +180,8 @@ export function detectAllNudges(
   maxBadges: number = NUDGE_CONFIG.MAX_BADGES
 ): Map<string, TaskNudge[]> {
   const result = new Map<string, TaskNudge[]>();
+  const cooldowns = loadCooldowns();
+  const nowTs = Date.now();
 
   // Collect all nudges
   const allNudges: TaskNudge[] = [];
@@ -138,7 +189,9 @@ export function detectAllNudges(
   for (const task of tasks) {
     if (task.completed) continue;
 
-    const taskNudges = detectTaskNudges(task);
+    const taskNudges = detectTaskNudges(task).filter(
+      nudge => !isOnCooldown(task.id, nudge.type, cooldowns, nowTs)
+    );
     if (taskNudges.length > 0) {
       result.set(task.id, taskNudges);
       allNudges.push(...taskNudges.filter(n => n.showBadge));
@@ -164,6 +217,9 @@ export function detectAllNudges(
       }
     }
   }
+
+  // Persist any cleanup of expired cooldowns
+  saveCooldowns(cooldowns);
 
   return result;
 }

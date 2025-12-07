@@ -110,6 +110,13 @@ export const userPreferencesRepository = {
   },
 
   /**
+   * Update quadrant ordering preference
+   */
+  async updateQuadrantOrdering(enableQuadrantOrdering: boolean): Promise<UserPreferences> {
+    return this.update({ enableQuadrantOrdering });
+  },
+
+  /**
    * Mark Reflection intro as seen
    */
   async markReflectionIntroSeen(): Promise<UserPreferences> {

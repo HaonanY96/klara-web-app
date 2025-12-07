@@ -1,6 +1,14 @@
 import { useCallback } from 'react';
-import type { TaskWithDetails, NudgeAction, ToneStyle, InferredStateType } from '@/types';
+import type {
+  TaskWithDetails,
+  NudgeAction,
+  ToneStyle,
+  InferredStateType,
+  NudgeType,
+} from '@/types';
 import { requestAISuggestions } from '@/lib/services/aiClient';
+import { setNudgeCooldown } from '@/lib/services/nudgeService';
+import { buildTaskSignature } from '@/lib/utils';
 
 interface UseTaskHandlersOptions {
   tasks: TaskWithDetails[];
@@ -36,7 +44,7 @@ interface UseTaskHandlersReturn {
   handleDeleteSubTask: (taskId: string, subTaskId: string) => Promise<void>;
   handleToggleFocused: (id: string) => Promise<void>;
   handleNudgeAction: (taskId: string, action: NudgeAction) => void;
-  handleNudgeDismiss: (taskId: string) => void;
+  handleNudgeDismiss: (taskId: string, type: NudgeType) => void;
   handleFocusTaskClick: (taskId: string) => void;
 }
 
@@ -181,10 +189,24 @@ export function useTaskHandlers(options: UseTaskHandlersOptions): UseTaskHandler
               taskText: taskToBreak.text,
               toneStyle,
               inferredState,
+              taskId,
+              taskSignature: buildTaskSignature({
+                text: taskToBreak.text,
+                importance: taskToBreak.importance,
+                urgency: taskToBreak.urgency,
+                dueDate: taskToBreak.dueDate,
+              }),
             }).then(async aiResult => {
               if (aiResult.success && aiResult.suggestions.length > 0) {
                 await addAllSubTasks(taskId, aiResult.suggestions);
                 toggleTaskExpansion(taskId, true);
+                if (aiResult.fromCache) {
+                  showToast('Used cached AI suggestions.', 'info');
+                }
+              } else if (aiResult.rateLimited) {
+                showToast(aiResult.error || 'AI request is rate limited.', 'info');
+              } else {
+                showToast(aiResult.error || 'AI request failed.', 'error');
               }
               setIsAiThinking(false);
             });
@@ -203,12 +225,20 @@ export function useTaskHandlers(options: UseTaskHandlersOptions): UseTaskHandler
           break;
       }
     },
-    [tasks, toneStyle, inferredState, addAllSubTasks, deleteTask, showToast, toggleTaskExpansion, setIsAiThinking]
+    [
+      tasks,
+      toneStyle,
+      inferredState,
+      addAllSubTasks,
+      deleteTask,
+      showToast,
+      toggleTaskExpansion,
+      setIsAiThinking,
+    ]
   );
 
-  const handleNudgeDismiss = useCallback((_taskId: string) => {
-    // For now, just close the expanded view
-    // In V1.5, we'll track dismissals for feedback learning
+  const handleNudgeDismiss = useCallback((taskId: string, type: NudgeType) => {
+    setNudgeCooldown(taskId, type);
   }, []);
 
   const handleFocusTaskClick = useCallback(

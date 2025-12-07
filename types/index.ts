@@ -63,10 +63,16 @@ export interface Task {
   dueDate: string | null;
   /** Whether pinned to top of quadrant */
   isPinned: boolean;
+  /** When pinned (for default pinned ordering) */
+  pinnedAt?: string | null;
   /** Whether marked as today's focus (MIT) - max 3 tasks */
   isFocused: boolean;
   /** Date when marked as focused (for auto-clear next day) */
   focusedAt: string | null;
+  /** Order inside MIT list (lower is higher); null means default order */
+  focusOrder?: number | null;
+  /** Order inside quadrant (lower is higher); null means default order */
+  quadrantOrder?: number | null;
   /** Creation timestamp (ISO 8601) */
   createdAt: string;
   /** Last update timestamp (ISO 8601) */
@@ -327,6 +333,8 @@ export interface UserPreferences {
   toneStyle: ToneStyle;
   /** Notification frequency preference */
   notificationFrequency: 'low' | 'medium' | 'high';
+  /** Whether quadrant-level manual ordering is enabled */
+  enableQuadrantOrdering?: boolean;
 
   // === AB Testing ===
   /** Current AB test assignments */
@@ -366,6 +374,7 @@ export const DEFAULT_USER_PREFERENCES: Omit<UserPreferences, 'id' | 'createdAt' 
   tasksCompletedCount: 0,
   toneStyle: 'gentle',
   notificationFrequency: 'medium',
+  enableQuadrantOrdering: false,
   abTests: [],
   feedbackHistory: [],
   learnedPreferences: {

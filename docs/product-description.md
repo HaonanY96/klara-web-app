@@ -1,10 +1,10 @@
-# Kino — A Lightweight AI Companion for Everyday Clarity
+# Klara — A Lightweight AI Companion for Everyday Clarity
 
 ## Overview
 
-Kino is a lightweight, quiet, and non-intrusive AI companion designed to help users see their priorities clearly, discover what they truly want to do, and act with intention. Kino does not try to manage the user’s life or overwhelm them with features. Instead, Kino appears only when needed, offering gentle guidance, clarity, and subtle suggestions for improvement.
+Klara is a lightweight, quiet, and non-intrusive AI companion designed to help users see their priorities clearly, discover what they truly want to do, and act with intention. Klara does not try to manage the user’s life or overwhelm them with features. Instead, Klara appears only when needed, offering gentle guidance, clarity, and subtle suggestions for improvement.
 
-Kino is not a to-do app. It is a clarity companion.
+Klara is not a to-do app. It is a clarity companion.
 
 ## Core Philosophy
 
@@ -30,7 +30,7 @@ Kino is not a to-do app. It is a clarity companion.
 
 ### 1. AI Blind-Spot Completion (Lightweight)
 
-When a user writes a task (e.g., “prepare Friday presentation”), Kino quietly suggests missing steps such as:
+When a user writes a task (e.g., “prepare Friday presentation”), Klara quietly suggests missing steps such as:
 
 - gather materials
 - draft outline
@@ -39,32 +39,33 @@ When a user writes a task (e.g., “prepare Friday presentation”), Kino quietl
 
 ### 2. Importance × Urgency Matrix
 
-Kino automatically classifies tasks based on importance and urgency.
+Klara automatically classifies tasks based on importance and urgency.
 
 - No manual sorting needed.
-- Kino provides one-line explanations for classification when hovered.
+- Klara provides one-line explanations for classification when hovered.
+- Optional ordering stays light: MIT (1-3 tasks) can be manually reordered; quadrant ordering is opt-in via Settings (default off) to avoid heavy management.
 
 ### 3. Habit Learning (Adaptive, Gentle)
 
-Kino observes:
+Klara observes:
 
 - when the user tends to complete tasks
 - what types of tasks are often delayed
 - preferred working styles
-  Kino uses this knowledge to provide minimal, context-aware guidance.
+  Klara uses this knowledge to provide minimal, context-aware guidance.
 
 ### 4. Light Planning Mode
 
-Once a week, Kino gently offers a simple reflection prompt.
-Kino returns a one-sentence summary and one actionable micro-suggestion.
+Once a week, Klara gently offers a simple reflection prompt.
+Klara returns a one-sentence summary and one actionable micro-suggestion.
 
 ### 5. Idea Capture → Smart Suggest
 
-Kino includes a lightweight input box for fleeting ideas.
+Klara includes a lightweight input box for fleeting ideas.
 
 - Short text only
 - No formatting or long notes
-- Kino suggests: “Convert this to a task?” if appropriate
+- Klara suggests: “Convert this to a task?” if appropriate
 
 ### 6. Privacy and Local-First Data
 
@@ -74,8 +75,8 @@ Kino includes a lightweight input box for fleeting ideas.
 
 ### 7. Web-first, Mobile-friendly (PWA)
 
-Kino starts as a web app, optimized for mobile.
-Users can add Kino to their homescreen as a PWA.
+Klara starts as a web app, optimized for mobile.
+Users can add Klara to their homescreen as a PWA.
 
 ### 8. Gentle Visual Insights
 
@@ -84,9 +85,9 @@ Small, minimal charts such as:
 - completion trends
 - common task categories
 - behavior patterns
-  Kino explains insights in short, soft micro-messages.
+  Klara explains insights in short, soft micro-messages.
 
-## What Kino Avoids
+## What Klara Avoids
 
 - No heavy dashboards
 - No aggressive reminders
@@ -105,7 +106,7 @@ Small, minimal charts such as:
 
 ## Technical Approach
 
-- Next.js Web App hosted under cyvisuals.ca (e.g., cyvisuals.ca/kino)
+- Next.js Web App hosted under cyvisuals.ca (e.g., cyvisuals.ca/klara)
 - Gemini Flash for lightweight AI tasks
 - Optionally Gemini Pro for deep reasoning on longer inputs
 - Token costs remain low due to short, concise interactions
@@ -121,9 +122,9 @@ Small, minimal charts such as:
 - Multi-language support
 - Soft persona customization
 
-## Why Kino Matters
+## Why Klara Matters
 
-Kino is not here to maximize productivity.
-Kino is here to help users see, understand, and gently move toward what matters.
+Klara is not here to maximize productivity.
+Klara is here to help users see, understand, and gently move toward what matters.
 
 A quiet companion for everyday clarity.
