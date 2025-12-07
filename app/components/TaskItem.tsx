@@ -43,9 +43,15 @@ interface TaskItemProps {
   /** Handler for nudge actions */
   onNudgeAction?: (taskId: string, action: NudgeAction) => void;
   /** Handler for nudge dismiss */
-  onNudgeDismiss?: (taskId: string) => void;
+  onNudgeDismiss?: (taskId: string, type: TaskNudge['type']) => void;
   /** Handler when user dismisses AI suggestions */
   onDismissSuggestions?: (taskId: string) => void;
+  /** Ordering mode inside quadrant */
+  orderingEnabled?: boolean;
+  /** Internal drag over callback for reordering */
+  onInternalDragOver?: (targetId: string) => void;
+  /** Internal drop callback for reordering */
+  onInternalDrop?: () => void;
 }
 
 const TaskItem = ({
@@ -67,6 +73,9 @@ const TaskItem = ({
   onNudgeAction,
   onNudgeDismiss,
   onDismissSuggestions,
+  orderingEnabled = false,
+  onInternalDragOver,
+  onInternalDrop,
 }: TaskItemProps) => {
   const isDesktop = useIsDesktop();
   const [manualInput, setManualInput] = useState('');
@@ -277,8 +286,24 @@ const TaskItem = ({
 
       {/* Main Card Content */}
       <div
-        draggable="true"
+        draggable
         onDragStart={e => handleDragStart(e, task.id)}
+        onDragOver={e => {
+          if (!orderingEnabled) return;
+          e.preventDefault();
+          onInternalDragOver?.(task.id);
+        }}
+        onDrop={e => {
+          if (!orderingEnabled) return;
+          e.preventDefault();
+          e.stopPropagation();
+          onInternalDrop?.();
+        }}
+        onDragEnd={e => {
+          if (!orderingEnabled) return;
+          e.preventDefault();
+          onInternalDrop?.();
+        }}
         onTouchStart={onTouchStart}
         onTouchMove={onTouchMove}
         onTouchEnd={onTouchEnd}
@@ -387,7 +412,7 @@ const TaskItem = ({
                         type={nudge.type}
                         taskId={task.id}
                         onAction={action => onNudgeAction(task.id, action)}
-                        onDismiss={() => onNudgeDismiss(task.id)}
+                        onDismiss={() => onNudgeDismiss(task.id, nudge.type)}
                       />
                     ))}
                   </div>

@@ -47,6 +47,10 @@ interface UseTasksReturn {
   updateDueDate: (id: string, dueDate: string | null) => Promise<void>;
   deleteTask: (id: string) => Promise<void>;
   updateTaskText: (id: string, text: string) => Promise<void>;
+  reorderFocus: (orderedIds: string[]) => Promise<void>;
+  resetFocusOrder: () => Promise<void>;
+  reorderQuadrant: (quadrant: QuadrantType, orderedIds: string[]) => Promise<void>;
+  resetQuadrant: (quadrant: QuadrantType) => Promise<void>;
 
   // SubTask Operations
   addSubTask: (taskId: string, text: string) => Promise<void>;
@@ -129,6 +133,41 @@ export function useTasks(): UseTasksReturn {
   }, [loadTasks]);
 
   // Computed values
+  const sortByFocus = (list: TaskWithDetails[]) => {
+    return [...list].sort((a, b) => {
+      const aHas = typeof a.focusOrder === 'number';
+      const bHas = typeof b.focusOrder === 'number';
+      if (aHas && bHas) return (a.focusOrder as number) - (b.focusOrder as number);
+      if (aHas) return -1;
+      if (bHas) return 1;
+      const aRef = a.focusedAt ?? a.createdAt;
+      const bRef = b.focusedAt ?? b.createdAt;
+      return bRef.localeCompare(aRef);
+    });
+  };
+
+  const sortQuadrant = (list: TaskWithDetails[]) => {
+    const pinned = list.filter(t => t.isPinned);
+    const unpinned = list.filter(t => !t.isPinned);
+
+    const sortGroup = (arr: TaskWithDetails[], usePinnedFallback: boolean) =>
+      [...arr].sort((a, b) => {
+        const aHas = typeof a.quadrantOrder === 'number';
+        const bHas = typeof b.quadrantOrder === 'number';
+        if (aHas && bHas) return (a.quadrantOrder as number) - (b.quadrantOrder as number);
+        if (aHas) return -1;
+        if (bHas) return 1;
+        if (usePinnedFallback) {
+          const aRef = a.pinnedAt ?? a.createdAt;
+          const bRef = b.pinnedAt ?? b.createdAt;
+          return bRef.localeCompare(aRef);
+        }
+        return b.createdAt.localeCompare(a.createdAt);
+      });
+
+    return [...sortGroup(pinned, true), ...sortGroup(unpinned, false)];
+  };
+
   const incompleteTasks = tasks.filter(t => !t.completed);
   const completedTasks = tasks.filter(t => t.completed);
 
@@ -138,13 +177,13 @@ export function useTasks(): UseTasksReturn {
     t => t.completedAt && t.completedAt.startsWith(today)
   );
 
-  const focusedTasks = incompleteTasks.filter(t => t.isFocused);
+  const focusedTasks = sortByFocus(incompleteTasks.filter(t => t.isFocused));
 
   const groupedTasks: Record<QuadrantType, TaskWithDetails[]> = {
-    'Do First': incompleteTasks.filter(t => getQuadrant(t) === 'Do First'),
-    Schedule: incompleteTasks.filter(t => getQuadrant(t) === 'Schedule'),
-    'Quick Tasks': incompleteTasks.filter(t => getQuadrant(t) === 'Quick Tasks'),
-    Later: incompleteTasks.filter(t => getQuadrant(t) === 'Later'),
+    'Do First': sortQuadrant(incompleteTasks.filter(t => getQuadrant(t) === 'Do First')),
+    Schedule: sortQuadrant(incompleteTasks.filter(t => getQuadrant(t) === 'Schedule')),
+    'Quick Tasks': sortQuadrant(incompleteTasks.filter(t => getQuadrant(t) === 'Quick Tasks')),
+    Later: sortQuadrant(incompleteTasks.filter(t => getQuadrant(t) === 'Later')),
   };
 
   // Task Operations
@@ -239,6 +278,35 @@ export function useTasks(): UseTasksReturn {
     [loadTasks]
   );
 
+  const reorderFocus = useCallback(
+    async (orderedIds: string[]) => {
+      await taskRepository.reorderFocus(orderedIds);
+      await loadTasks();
+    },
+    [loadTasks]
+  );
+
+  const resetFocusOrder = useCallback(async () => {
+    await taskRepository.resetFocusOrder();
+    await loadTasks();
+  }, [loadTasks]);
+
+  const reorderQuadrant = useCallback(
+    async (quadrant: QuadrantType, orderedIds: string[]) => {
+      await taskRepository.reorderQuadrant(quadrant, orderedIds);
+      await loadTasks();
+    },
+    [loadTasks]
+  );
+
+  const resetQuadrant = useCallback(
+    async (quadrant: QuadrantType) => {
+      await taskRepository.resetQuadrant(quadrant);
+      await loadTasks();
+    },
+    [loadTasks]
+  );
+
   // SubTask Operations
   const addSubTask = useCallback(
     async (taskId: string, text: string) => {
@@ -307,6 +375,10 @@ export function useTasks(): UseTasksReturn {
     updateDueDate,
     deleteTask,
     updateTaskText,
+    reorderFocus,
+    resetFocusOrder,
+    reorderQuadrant,
+    resetQuadrant,
     addSubTask,
     addAllSubTasks,
     toggleSubTask,

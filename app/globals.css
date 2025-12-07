@@ -6,12 +6,10 @@
   --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
   --safe-area-inset-left: env(safe-area-inset-left, 0px);
   --safe-area-inset-right: env(safe-area-inset-right, 0px);
-}
-
-@theme inline {
-  /* Map Tailwind's font utilities to the variables injected by Next.js/Google Fonts */
+  /* Font variables injected by Next.js fonts */
   --font-sans: var(--font-inter);
   --font-serif: var(--font-lora);
+  --font-brand: var(--font-national-park, var(--font-serif));
 }
 
 /* Custom Utilities from Gemini Code */
@@ -61,6 +59,12 @@
 }
 .font-body {
   font-family: var(--font-sans);
+}
+.font-brand {
+  font-family: var(--font-brand), var(--font-serif), var(--font-sans), sans-serif;
+}
+.font-national-park {
+  font-family: var(--font-national-park), 'Inter', sans-serif;
 }
 
 /* React DatePicker Custom Styles */

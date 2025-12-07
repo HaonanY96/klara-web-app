@@ -108,6 +108,45 @@ export class KlaraDatabase extends Dexie {
           (record as { taskSignature?: string }).taskSignature = record.taskSignature ?? '';
         });
       });
+
+    // V6: Add ordering fields for tasks and quadrant ordering preference
+    this.version(6)
+      .stores({
+        tasks:
+          'id, completed, importance, urgency, dueDate, isPinned, isFocused, createdAt, updatedAt, pinnedAt, focusOrder, quadrantOrder',
+        subTasks: 'id, taskId, completed, order',
+        reflections: 'id, date',
+        aiSuggestions: 'id, taskId, expiresAt, status',
+        habitData: 'id, date',
+        userPreferences: 'id, toneStyle, updatedAt, enableQuadrantOrdering',
+      })
+      .upgrade(async tx => {
+        const tasksTable = tx.table('tasks');
+        await tasksTable.toCollection().modify(task => {
+          const t = task as {
+            pinnedAt?: string | null;
+            isPinned?: number | boolean;
+            createdAt?: string;
+            focusOrder?: number | null;
+            quadrantOrder?: number | null;
+          };
+          // Default pinnedAt to createdAt when pinned
+          if (t.isPinned && !t.pinnedAt && t.createdAt) {
+            t.pinnedAt = t.createdAt;
+          }
+          // Ensure ordering fields exist
+          if (typeof t.focusOrder === 'undefined') t.focusOrder = null;
+          if (typeof t.quadrantOrder === 'undefined') t.quadrantOrder = null;
+        });
+
+        const prefsTable = tx.table('userPreferences');
+        await prefsTable.toCollection().modify(pref => {
+          const p = pref as { enableQuadrantOrdering?: boolean };
+          if (typeof p.enableQuadrantOrdering === 'undefined') {
+            p.enableQuadrantOrdering = false;
+          }
+        });
+      });
   }
 }
 

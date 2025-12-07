@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import { Inter, Lora } from 'next/font/google';
+import localFont from 'next/font/local';
 import './globals.css';
 import { ToastProvider } from './components/Toast';
 
@@ -12,6 +13,23 @@ const inter = Inter({
 const lora = Lora({
   variable: '--font-lora',
   subsets: ['latin'],
+  display: 'swap',
+});
+
+const nationalPark = localFont({
+  src: [
+    {
+      path: '../public/fonts/national-park/NationalPark-Regular.ttf',
+      weight: '400',
+      style: 'normal',
+    },
+    {
+      path: '../public/fonts/national-park/NationalPark-Light.ttf',
+      weight: '300',
+      style: 'normal',
+    },
+  ],
+  variable: '--font-national-park',
   display: 'swap',
 });
 
@@ -57,7 +75,7 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="mobile-web-app-capable" content="yes" />
       </head>
-      <body className={`${inter.variable} ${lora.variable} antialiased`}>
+      <body className={`${inter.variable} ${lora.variable} ${nationalPark.variable} antialiased`}>
         <ToastProvider>{children}</ToastProvider>
       </body>
     </html>

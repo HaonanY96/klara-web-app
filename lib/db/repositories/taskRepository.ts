@@ -209,6 +209,9 @@ export const taskRepository = {
     const task: Task = {
       ...data,
       id: customId || generateId(),
+      pinnedAt: data.isPinned ? timestamp : null,
+      focusOrder: null,
+      quadrantOrder: null,
       createdAt: timestamp,
       updatedAt: timestamp,
       completedAt: null,
@@ -219,8 +222,8 @@ export const taskRepository = {
 
     // Store AI suggestions if provided
     if (aiSuggestions && aiSuggestions.length > 0) {
-      // Set expiry to 7 days from now
-      const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+      // Set expiry to 24 hours (align with AI cache TTL)
+      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
       await db().aiSuggestions.add({
         id: generateId(),
         taskId: task.id,
@@ -287,9 +290,11 @@ export const taskRepository = {
     const task = await this.getById(id);
     if (!task) throw new Error(`Task ${id} not found`);
 
+    const nowTs = now();
     await db().tasks.update(id, {
       isPinned: !task.isPinned,
-      updatedAt: now(),
+      pinnedAt: !task.isPinned ? nowTs : task.pinnedAt,
+      updatedAt: nowTs,
     });
 
     return (await this.getById(id))!;
@@ -308,6 +313,7 @@ export const taskRepository = {
       await db().tasks.update(id, {
         isFocused: false,
         focusedAt: null,
+        focusOrder: null,
         updatedAt: now(),
       });
       return { success: true, task: (await this.getById(id))! };
@@ -319,10 +325,13 @@ export const taskRepository = {
       return { success: false, error: 'Maximum 3 focused tasks allowed' };
     }
 
+    const nowTs = now();
     await db().tasks.update(id, {
       isFocused: true,
-      focusedAt: now(),
-      updatedAt: now(),
+      focusedAt: nowTs,
+      // default insert at top by using newest focusOrder; will be recomputed on reorder
+      focusOrder: null,
+      updatedAt: nowTs,
     });
 
     return { success: true, task: (await this.getById(id))! };
@@ -339,9 +348,19 @@ export const taskRepository = {
     const before = await this.getById(id);
     if (!before) throw new Error(`Task ${id} not found`);
 
+    // Determine next order for target quadrant (append to end)
+    const targetQuadrantTasks = await this.getByQuadrant(
+      getQuadrant({ ...before, importance, urgency } as Task)
+    );
+    const maxOrder = targetQuadrantTasks.reduce<number>((acc, t) => {
+      const val = typeof t.quadrantOrder === 'number' ? t.quadrantOrder : -1;
+      return Math.max(acc, val);
+    }, -1);
+
     await db().tasks.update(id, {
       importance,
       urgency,
+      quadrantOrder: maxOrder + 1,
       updatedAt: now(),
     });
 
@@ -437,5 +456,85 @@ export const taskRepository = {
       if (!task.dueDate) return false;
       return task.dueDate <= today;
     });
+  },
+
+  /**
+   * Reorder MIT tasks by provided order (ids in desired order)
+   */
+  async reorderFocus(taskIdsInOrder: string[]): Promise<void> {
+    await Promise.all(
+      taskIdsInOrder.map((id, idx) =>
+        db().tasks.update(id, {
+          focusOrder: idx,
+          updatedAt: now(),
+        })
+      )
+    );
+  },
+
+  /**
+   * Reset focus order to default (most recent focusedAt / createdAt first)
+   */
+  async resetFocusOrder(): Promise<void> {
+    const focused = await this.getFocused();
+    // Sort default: focusedAt desc, then createdAt desc
+    const sorted = focused.sort((a, b) => {
+      const aRef = a.focusedAt ?? a.createdAt;
+      const bRef = b.focusedAt ?? b.createdAt;
+      return bRef.localeCompare(aRef);
+    });
+    await Promise.all(
+      sorted.map((task, idx) =>
+        db().tasks.update(task.id, {
+          focusOrder: idx,
+          updatedAt: now(),
+        })
+      )
+    );
+  },
+
+  /**
+   * Reorder tasks within a quadrant by provided order (ids in desired order)
+   */
+  async reorderQuadrant(quadrant: QuadrantType, orderedIds: string[]): Promise<void> {
+    // Ensure only tasks in quadrant are updated
+    const quadrantTasks = await this.getByQuadrant(quadrant);
+    const idSet = new Set(quadrantTasks.map(t => t.id));
+    const filteredIds = orderedIds.filter(id => idSet.has(id));
+    await Promise.all(
+      filteredIds.map((id, idx) =>
+        db().tasks.update(id, {
+          quadrantOrder: idx,
+          updatedAt: now(),
+        })
+      )
+    );
+  },
+
+  /**
+   * Reset quadrant order back to default: pinned first (pinnedAt/createdAt desc),
+   * then others by createdAt desc.
+   */
+  async resetQuadrant(quadrant: QuadrantType): Promise<void> {
+    const tasks = await this.getByQuadrant(quadrant);
+    const pinned = tasks.filter(t => t.isPinned);
+    const unpinned = tasks.filter(t => !t.isPinned);
+
+    const sortPinned = [...pinned].sort((a, b) => {
+      const aRef = a.pinnedAt ?? a.createdAt;
+      const bRef = b.pinnedAt ?? b.createdAt;
+      return bRef.localeCompare(aRef);
+    });
+    const sortUnpinned = [...unpinned].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+
+    let idx = 0;
+    await Promise.all(
+      [...sortPinned, ...sortUnpinned].map(t =>
+        db().tasks.update(t.id, {
+          quadrantOrder: idx++,
+          updatedAt: now(),
+        })
+      )
+    );
   },
 };

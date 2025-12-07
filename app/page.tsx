@@ -36,8 +36,9 @@ import {
 import { requestAISuggestions, shouldSuggestSubtasks } from '@/lib/services/aiClient';
 import { detectAllNudges } from '@/lib/services/nudgeService';
 import { classifyTask } from '@/lib/utils/taskClassification';
+import { buildTaskSignature } from '@/lib/utils/taskSignature';
 import { motion, AnimatePresence } from 'motion/react';
-import type { NudgeAction, TaskWithDetails } from '@/types';
+import type { NudgeAction, TaskWithDetails, QuadrantType } from '@/types';
 import { DatePickerPopover } from './components/DatePickerPopover';
 import { parseLocalDate } from '@/lib/utils/date';
 
@@ -75,8 +76,6 @@ const KlaraApp = () => {
     });
   }, []);
 
-  const isTaskExpanded = useCallback((id: string) => expandedTaskIds.has(id), [expandedTaskIds]);
-
   // AI Online status (for now, always true - can be connected to actual API status later)
   const [isAIOnline] = useState(true);
 
@@ -101,14 +100,46 @@ const KlaraApp = () => {
     toggleSubTask,
     deleteSubTask,
     dismissAISuggestions,
+    reorderFocus,
+    resetFocusOrder,
+    reorderQuadrant,
+    resetQuadrant,
   } = useTasks();
 
+  const effectiveExpandedTaskIds = useMemo(() => {
+    const next = new Set<string>();
+    const currentIds = new Set(tasks.map(t => t.id));
+
+    // keep only existing tasks
+    expandedTaskIds.forEach(id => {
+      if (currentIds.has(id)) next.add(id);
+    });
+
+    // auto-expand tasks that should show suggestions
+    tasks.forEach(task => {
+      if (task.showSuggestions) next.add(task.id);
+    });
+
+    return next;
+  }, [expandedTaskIds, tasks]);
+
+  const isTaskExpanded = useCallback(
+    (id: string) => effectiveExpandedTaskIds.has(id),
+    [effectiveExpandedTaskIds]
+  );
+
   // User preferences for progressive disclosure and AI tone
-  const { tasksCompletedCount, hasSeenReflectionIntro, incrementTasksCompleted, toneStyle } =
-    useUserPreferences();
+  const {
+    tasksCompletedCount,
+    hasSeenReflectionIntro,
+    incrementTasksCompleted,
+    toneStyle,
+    enableQuadrantOrdering,
+  } = useUserPreferences();
 
   // State inference for context-aware AI suggestions
-  const { inferredState } = useStateInference(tasks);
+  const { inferredState, stateDescription, isInferring, refresh: refreshState } = useStateInference(tasks);
+  const stateLabel = inferredState ? stateDescription || 'Neutral' : undefined;
 
   // Drag and drop
   const { draggedTaskId, handleDragStart, handleDragOver, handleDrop: handleDropBase } = useDragAndDrop();
@@ -157,28 +188,6 @@ const KlaraApp = () => {
     return detectAllNudges(incompleteTasks);
   }, [incompleteTasks]);
 
-  // Keep expanded state in sync with task list (auto-expand AI suggestion tasks)
-  useEffect(() => {
-    setExpandedTaskIds(prev => {
-      const next = new Set<string>();
-      const currentIds = new Set(tasks.map(t => t.id));
-
-      prev.forEach(id => {
-        if (currentIds.has(id)) {
-          next.add(id);
-        }
-      });
-
-      tasks.forEach(task => {
-        if (task.showSuggestions) {
-          next.add(task.id);
-        }
-      });
-
-      return next;
-    });
-  }, [tasks]);
-
   // Close quick date picker when tapping outside (Now handled by DatePickerPopover)
   // but we still want to close if clicking completely outside the popover's concern if needed
   // actually, DatePickerPopover handles its own close. We just need to pass onClose.
@@ -207,6 +216,12 @@ const KlaraApp = () => {
         taskText: inputText,
         toneStyle,
         inferredState: inferredState?.state,
+        taskSignature: buildTaskSignature({
+          text: inputText,
+          importance: detectedImportance,
+          urgency: detectedUrgency,
+          dueDate: autoDetectedDate,
+        }),
       });
 
       createdTask = await addTask(inputText, {
@@ -250,6 +265,26 @@ const KlaraApp = () => {
     setTimeout(() => inputRef.current?.focus(), 50);
   };
 
+  const handleReorderFocus = async (orderedIds: string[]) => {
+    await reorderFocus(orderedIds);
+  };
+
+  const handleResetFocus = async () => {
+    await resetFocusOrder();
+  };
+
+  const handleReorderQuadrant = async (
+    quadrantId: QuadrantType,
+    pinnedIds: string[],
+    unpinnedIds: string[]
+  ) => {
+    await reorderQuadrant(quadrantId, [...pinnedIds, ...unpinnedIds]);
+  };
+
+  const handleResetQuadrantOrder = async (quadrantId: QuadrantType) => {
+    await resetQuadrant(quadrantId);
+  };
+
   // Focus input handler
   const focusInput = () => {
     inputRef.current?.focus();
@@ -282,10 +317,20 @@ const KlaraApp = () => {
   return (
     <div className="min-h-screen bg-[#FDFCF8] text-stone-700 font-sans selection:bg-orange-100">
       {/* App Menu (Side Panel) */}
-      <AppMenu isOpen={isMenuOpen} onClose={() => setIsMenuOpen(false)} />
+      <AppMenu
+        isOpen={isMenuOpen}
+        onClose={() => setIsMenuOpen(false)}
+        onRefreshState={refreshState}
+        isInferringState={isInferring}
+      />
 
       {/* Header */}
-      <AppHeader onMenuOpen={() => setIsMenuOpen(true)} isAIOnline={isAIOnline} />
+      <AppHeader
+        onMenuOpen={() => setIsMenuOpen(true)}
+        isAIOnline={isAIOnline}
+        stateLabel={stateLabel}
+        isAppLoading={isLoading}
+      />
 
       <div className="max-w-md mx-auto min-h-screen flex flex-col bg-white/50 backdrop-blur-3xl shadow-[0_0_50px_-10px_rgba(0,0,0,0.02)]">
         {/* Scrollable Content Area - with padding for fixed header and footer */}
@@ -302,6 +347,8 @@ const KlaraApp = () => {
                 onToggleComplete={handleToggleTask}
                 onRemoveFocus={handleToggleFocused}
                 onTaskClick={handleFocusTaskClick}
+                onReorder={handleReorderFocus}
+                onResetOrder={handleResetFocus}
               />
 
               {/* Progressive Disclosure: Reflection Nudge */}
@@ -347,6 +394,9 @@ const KlaraApp = () => {
                   nudgeMap={nudgeMap}
                   onNudgeAction={handleNudgeAction}
                   onNudgeDismiss={handleNudgeDismiss}
+                  orderingEnabled={enableQuadrantOrdering}
+                  onReorder={handleReorderQuadrant}
+                  onResetOrder={handleResetQuadrantOrder}
                 />
 
                 <QuadrantSection
@@ -375,6 +425,9 @@ const KlaraApp = () => {
                   nudgeMap={nudgeMap}
                   onNudgeAction={handleNudgeAction}
                   onNudgeDismiss={handleNudgeDismiss}
+                  orderingEnabled={enableQuadrantOrdering}
+                  onReorder={handleReorderQuadrant}
+                  onResetOrder={handleResetQuadrantOrder}
                 />
 
                 <QuadrantSection
@@ -403,6 +456,9 @@ const KlaraApp = () => {
                   nudgeMap={nudgeMap}
                   onNudgeAction={handleNudgeAction}
                   onNudgeDismiss={handleNudgeDismiss}
+                  orderingEnabled={enableQuadrantOrdering}
+                  onReorder={handleReorderQuadrant}
+                  onResetOrder={handleResetQuadrantOrder}
                 />
 
                 <QuadrantSection
@@ -432,6 +488,9 @@ const KlaraApp = () => {
                   nudgeMap={nudgeMap}
                   onNudgeAction={handleNudgeAction}
                   onNudgeDismiss={handleNudgeDismiss}
+                  orderingEnabled={enableQuadrantOrdering}
+                  onReorder={handleReorderQuadrant}
+                  onResetOrder={handleResetQuadrantOrder}
                 />
 
                 {/* Completed Tasks */}

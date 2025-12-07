@@ -1,13 +1,15 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { X, Clock, Download, Settings, User, Info } from 'lucide-react';
+import { X, Clock, Download, Settings, User, Info, RefreshCw } from 'lucide-react';
 import Link from 'next/link';
 import SettingsPanel from './SettingsPanel';
 
 interface AppMenuProps {
   isOpen: boolean;
   onClose: () => void;
+  onRefreshState?: () => void;
+  isInferringState?: boolean;
 }
 
 interface MenuItemProps {
@@ -61,7 +63,7 @@ const MenuItem = ({ icon, label, href, onClick, comingSoon }: MenuItemProps) => 
  *
  * Side panel menu with navigation and settings
  */
-const AppMenu = ({ isOpen, onClose }: AppMenuProps) => {
+const AppMenu = ({ isOpen, onClose, onRefreshState, isInferringState }: AppMenuProps) => {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   // Close on escape key
@@ -105,7 +107,7 @@ const AppMenu = ({ isOpen, onClose }: AppMenuProps) => {
       {/* Side Panel */}
       <div
         className={`
-          fixed top-0 left-0 h-full w-72 bg-white shadow-2xl z-50
+          fixed top-0 left-0 h-full w-84 bg-white shadow-2xl z-50
           transform transition-transform duration-300 ease-out
           ${isOpen ? 'translate-x-0' : '-translate-x-full'}
         `}
@@ -145,6 +147,16 @@ const AppMenu = ({ isOpen, onClose }: AppMenuProps) => {
 
           {/* Secondary Actions */}
           <div>
+            {onRefreshState && (
+              <MenuItem
+                icon={<RefreshCw size={18} strokeWidth={1.4} />}
+                label={isInferringState ? 'Refreshing…' : 'Refresh status'}
+                onClick={() => {
+                  onRefreshState();
+                  onClose();
+                }}
+              />
+            )}
             <MenuItem
               icon={<Settings size={20} strokeWidth={1.5} />}
               label="Settings"
