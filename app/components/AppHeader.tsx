@@ -11,6 +11,10 @@ interface AppHeaderProps {
   isAppLoading?: boolean;
   /** Custom loading label; defaults to "Loading..." */
   loadingLabel?: string;
+  /** Whether the app is in sorting mode */
+  isSorting?: boolean;
+  /** Handler to exit sorting mode */
+  onExitSort?: () => void;
 }
 
 /**
@@ -27,6 +31,8 @@ const AppHeader = ({
   stateLabel,
   isAppLoading = false,
   loadingLabel = 'Loading...',
+  isSorting = false,
+  onExitSort,
 }: AppHeaderProps) => {
   // Format date on client side
   const [formattedDate, setFormattedDate] = React.useState('');
@@ -76,11 +82,20 @@ const AppHeader = ({
           </h1>
         </div>
 
-        {/* Date (short format) */}
+        {/* Date or Done button when sorting */}
         <div className="flex items-center justify-end">
-          <div className="text-[11px] font-medium tracking-wider text-stone-400 font-heading italic opacity-80">
-            {formattedDate}
-          </div>
+          {isSorting ? (
+            <button
+              onClick={onExitSort}
+              className="text-[12px] font-semibold text-orange-500 hover:text-orange-600 px-3 py-1 rounded-lg hover:bg-orange-50 transition-colors"
+            >
+              Done
+            </button>
+          ) : (
+            <div className="text-[11px] font-medium tracking-wider text-stone-400 font-heading italic opacity-80">
+              {formattedDate}
+            </div>
+          )}
         </div>
       </div>
 

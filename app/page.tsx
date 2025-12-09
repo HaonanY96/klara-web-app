@@ -48,12 +48,14 @@ const KlaraApp = () => {
   const [inputText, setInputText] = useState('');
   const [isAiThinking, setIsAiThinking] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isSortingMode, setIsSortingMode] = useState(false);
 
   // Input Date State
   const [isInputFocused, setIsInputFocused] = useState(false);
   const [inputDueDate, setInputDueDate] = useState<string | null>(null);
   const [showInputDatePicker, setShowInputDatePicker] = useState(false);
   const [expandedTaskIds, setExpandedTaskIds] = useState<Set<string>>(() => new Set());
+  const [autoExpandedSuggestions, setAutoExpandedSuggestions] = useState<Set<string>>(() => new Set());
 
   // Input ref for focusing
   const inputRef = useRef<HTMLInputElement>(null);
@@ -106,6 +108,16 @@ const KlaraApp = () => {
     resetQuadrant,
   } = useTasks();
 
+  const quadrantPriorityMap: Record<
+    QuadrantType,
+    { importance: 'high' | 'low'; urgency: 'high' | 'low' }
+  > = {
+    'Do First': { importance: 'high', urgency: 'high' },
+    Schedule: { importance: 'high', urgency: 'low' },
+    'Quick Tasks': { importance: 'low', urgency: 'high' },
+    Later: { importance: 'low', urgency: 'low' },
+  };
+
   const effectiveExpandedTaskIds = useMemo(() => {
     const next = new Set<string>();
     const currentIds = new Set(tasks.map(t => t.id));
@@ -113,11 +125,6 @@ const KlaraApp = () => {
     // keep only existing tasks
     expandedTaskIds.forEach(id => {
       if (currentIds.has(id)) next.add(id);
-    });
-
-    // auto-expand tasks that should show suggestions
-    tasks.forEach(task => {
-      if (task.showSuggestions) next.add(task.id);
     });
 
     return next;
@@ -134,7 +141,6 @@ const KlaraApp = () => {
     hasSeenReflectionIntro,
     incrementTasksCompleted,
     toneStyle,
-    enableQuadrantOrdering,
   } = useUserPreferences();
 
   // State inference for context-aware AI suggestions
@@ -241,12 +247,27 @@ const KlaraApp = () => {
     }
 
     if (createdTask?.aiSuggestions.length) {
-      toggleTaskExpansion(createdTask.id, true);
+      setAutoExpandedSuggestions(prev => {
+        if (prev.has(createdTask.id)) return prev;
+        const next = new Set(prev);
+        next.add(createdTask.id);
+        toggleTaskExpansion(createdTask.id, true);
+        return next;
+      });
     }
 
     setInputText('');
     setInputDueDate(null);
   };
+
+  const handleMoveTaskToQuadrant = async (taskId: string, quadrant: QuadrantType) => {
+    const target = quadrantPriorityMap[quadrant];
+    if (!target) return;
+    await updateQuadrant(taskId, target.importance, target.urgency);
+  };
+
+  const toggleSortMode = () => setIsSortingMode(prev => !prev);
+  const exitSortMode = () => setIsSortingMode(false);
 
 
   // Wrap handleDrop with updateQuadrant dependency
@@ -330,6 +351,8 @@ const KlaraApp = () => {
         isAIOnline={isAIOnline}
         stateLabel={stateLabel}
         isAppLoading={isLoading}
+        isSorting={isSortingMode}
+        onExitSort={exitSortMode}
       />
 
       <div className="max-w-md mx-auto min-h-screen flex flex-col bg-white/50 backdrop-blur-3xl shadow-[0_0_50px_-10px_rgba(0,0,0,0.02)]">
@@ -349,6 +372,7 @@ const KlaraApp = () => {
                 onTaskClick={handleFocusTaskClick}
                 onReorder={handleReorderFocus}
                 onResetOrder={handleResetFocus}
+                isSortingMode={isSortingMode}
               />
 
               {/* Progressive Disclosure: Reflection Nudge */}
@@ -394,7 +418,10 @@ const KlaraApp = () => {
                   nudgeMap={nudgeMap}
                   onNudgeAction={handleNudgeAction}
                   onNudgeDismiss={handleNudgeDismiss}
-                  orderingEnabled={enableQuadrantOrdering}
+                  orderingEnabled={true}
+                  isSortingMode={isSortingMode}
+                  onToggleSortMode={toggleSortMode}
+                  onMoveTask={handleMoveTaskToQuadrant}
                   onReorder={handleReorderQuadrant}
                   onResetOrder={handleResetQuadrantOrder}
                 />
@@ -425,7 +452,10 @@ const KlaraApp = () => {
                   nudgeMap={nudgeMap}
                   onNudgeAction={handleNudgeAction}
                   onNudgeDismiss={handleNudgeDismiss}
-                  orderingEnabled={enableQuadrantOrdering}
+                  orderingEnabled={true}
+                  isSortingMode={isSortingMode}
+                  onToggleSortMode={toggleSortMode}
+                  onMoveTask={handleMoveTaskToQuadrant}
                   onReorder={handleReorderQuadrant}
                   onResetOrder={handleResetQuadrantOrder}
                 />
@@ -456,7 +486,10 @@ const KlaraApp = () => {
                   nudgeMap={nudgeMap}
                   onNudgeAction={handleNudgeAction}
                   onNudgeDismiss={handleNudgeDismiss}
-                  orderingEnabled={enableQuadrantOrdering}
+                  orderingEnabled={true}
+                  isSortingMode={isSortingMode}
+                  onToggleSortMode={toggleSortMode}
+                  onMoveTask={handleMoveTaskToQuadrant}
                   onReorder={handleReorderQuadrant}
                   onResetOrder={handleResetQuadrantOrder}
                 />
@@ -488,7 +521,10 @@ const KlaraApp = () => {
                   nudgeMap={nudgeMap}
                   onNudgeAction={handleNudgeAction}
                   onNudgeDismiss={handleNudgeDismiss}
-                  orderingEnabled={enableQuadrantOrdering}
+                  orderingEnabled={true}
+                  isSortingMode={isSortingMode}
+                  onToggleSortMode={toggleSortMode}
+                  onMoveTask={handleMoveTaskToQuadrant}
                   onReorder={handleReorderQuadrant}
                   onResetOrder={handleResetQuadrantOrder}
                 />
