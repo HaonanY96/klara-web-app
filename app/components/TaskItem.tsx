@@ -13,7 +13,7 @@ import {
   Star,
 } from 'lucide-react';
 import { formatDueDate, isOverdue, toDateString } from '@/lib/utils/date';
-import type { TaskWithDetails, TaskNudge, NudgeAction } from '@/types';
+import type { TaskWithDetails, TaskNudge, NudgeAction, QuadrantType } from '@/types';
 import TaskBadge from './TaskBadge';
 import NudgeCard from './NudgeCard';
 import { createPortal } from 'react-dom';
@@ -52,6 +52,14 @@ interface TaskItemProps {
   onInternalDragOver?: (targetId: string) => void;
   /** Internal drop callback for reordering */
   onInternalDrop?: () => void;
+  /** Current quadrant for quick move actions */
+  quadrantId?: QuadrantType;
+  /** Sorting mode toggle (from context menu) */
+  onToggleSortMode?: () => void;
+  /** Whether global sorting mode is active */
+  isSortingMode?: boolean;
+  /** Direct move handler for mobile without drag */
+  onMoveToQuadrant?: (taskId: string, quadrant: QuadrantType) => void;
 }
 
 const TaskItem = ({
@@ -76,6 +84,10 @@ const TaskItem = ({
   orderingEnabled = false,
   onInternalDragOver,
   onInternalDrop,
+  quadrantId,
+  onToggleSortMode,
+  isSortingMode = false,
+  onMoveToQuadrant,
 }: TaskItemProps) => {
   const isDesktop = useIsDesktop();
   const [manualInput, setManualInput] = useState('');
@@ -318,7 +330,13 @@ const TaskItem = ({
       >
         <div className="flex items-start gap-3">
           {/* Drag Handle (Desktop) */}
-          <div className="absolute left-1 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-20 text-stone-400 -ml-2 hidden md:block">
+          <div
+            className={`absolute left-1 top-1/2 -translate-y-1/2 text-stone-400 -ml-2 ${
+              orderingEnabled
+                ? 'opacity-70'
+                : 'opacity-0 md:group-hover:opacity-20'
+            } ${orderingEnabled ? 'block' : 'hidden md:block'}`}
+          >
             <GripVertical size={12} />
           </div>
 
@@ -570,6 +588,13 @@ const TaskItem = ({
         onDelete={() => handleDeleteTask(task.id)}
         onAddDate={handleDatePickerFromMenu}
         onEditTask={handleEditTaskRequest}
+        onToggleSortMode={onToggleSortMode || (() => {})}
+        isSorting={isSortingMode}
+        onMoveToQuadrant={
+          onMoveToQuadrant && quadrantId
+            ? q => onMoveToQuadrant(task.id, q)
+            : undefined
+        }
       />
     </div>
   );

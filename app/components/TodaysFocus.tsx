@@ -1,5 +1,5 @@
 import React from 'react';
-import { Target, Circle, X } from 'lucide-react';
+import { Target, Circle, X, GripVertical } from 'lucide-react';
 import type { TaskWithDetails } from '@/types';
 
 interface TodaysFocusProps {
@@ -9,6 +9,7 @@ interface TodaysFocusProps {
   onTaskClick?: (id: string) => void;
   onReorder?: (orderedIds: string[]) => void;
   onResetOrder?: () => void;
+  isSortingMode?: boolean;
 }
 
 const TodaysFocus = ({
@@ -18,6 +19,7 @@ const TodaysFocus = ({
   onTaskClick,
   onReorder,
   onResetOrder,
+  isSortingMode = false,
 }: TodaysFocusProps) => {
   if (tasks.length === 0) {
     return null;
@@ -79,15 +81,30 @@ const TodaysFocus = ({
           <div
             key={task.id}
             className="flex items-center gap-3 bg-linear-to-r from-orange-50 to-amber-50/50 border border-orange-100/50 rounded-xl px-4 py-3 group"
-            draggable={!!onReorder}
-            onDragStart={() => handleDragStart(task.id)}
+            draggable={!!onReorder && isSortingMode}
+            onDragStart={() => {
+              if (!isSortingMode) return;
+              handleDragStart(task.id);
+            }}
             onDragOver={e => {
+              if (!isSortingMode) return;
               e.preventDefault();
               handleDragOver(task.id);
             }}
-            onDrop={handleDrop}
-            onDragEnd={handleDrop}
+            onDrop={() => {
+              if (!isSortingMode) return;
+              handleDrop();
+            }}
+            onDragEnd={() => {
+              if (!isSortingMode) return;
+              handleDrop();
+            }}
           >
+            {isSortingMode && (
+              <div className="text-stone-300 hover:text-stone-500 transition-colors">
+                <GripVertical size={14} />
+              </div>
+            )}
             <button
               onClick={() => onToggleComplete(task.id)}
               className="text-orange-300 hover:text-orange-500 transition-colors"

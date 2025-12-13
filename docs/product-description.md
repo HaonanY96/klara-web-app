@@ -15,14 +15,15 @@ Klara is not a to-do app. It is a clarity companion.
 - Learns the user’s preferences and adapts gently.
 - Encourages growth with soft, human-like presence.
 - Keeps interactions short, minimal, and helpful.
+- **ADHD Friendly**: Reduces friction, decision paralysis, and shame.
 
 ## Primary Goals
 
 1. Help users see what truly matters.
 2. Prevent blind spots and oversights in tasks.
-3. Provide simple, intelligent suggestions.
+3. Provide simple, intelligent suggestions (including time estimation).
 4. Sort tasks by importance and urgency.
-5. Capture fleeting ideas and transform them into actionable steps.
+5. Capture fleeting ideas (Brain Dump) and transform them into actionable steps.
 6. Track small progress over time in a gentle, non-judgmental way.
 7. Build a sense of partnership and companionship in daily living.
 
@@ -30,20 +31,16 @@ Klara is not a to-do app. It is a clarity companion.
 
 ### 1. AI Blind-Spot Completion (Lightweight)
 
-When a user writes a task (e.g., “prepare Friday presentation”), Klara quietly suggests missing steps such as:
-
-- gather materials
-- draft outline
-- rehearse once
+When a user writes a task (e.g., “prepare Friday presentation”), Klara quietly suggests missing steps.
   The suggestions appear only when the user wants to view them.
+  **New**: AI also provides a gentle time estimation (e.g., "5-10 min") to help combat time blindness.
 
-### 2. Importance × Urgency Matrix
+### 2. Importance × Urgency Matrix & Magic Pick
 
 Klara automatically classifies tasks based on importance and urgency.
 
-- No manual sorting needed.
-- Klara provides one-line explanations for classification when hovered.
-- Optional ordering stays light: MIT (1-3 tasks) can be manually reordered; quadrant ordering is opt-in via Settings (default off) to avoid heavy management.
+- **Magic Pick**: Stuck in analysis paralysis? Klara can randomly highlight one manageable task for you, blurring the rest to reduce cognitive load.
+- **Focus Mode**: Double-tap any quadrant to go full-screen, blocking out other distractions.
 
 ### 3. Habit Learning (Adaptive, Gentle)
 
@@ -91,9 +88,9 @@ Small, minimal charts such as:
 
 - No heavy dashboards
 - No aggressive reminders
+- **No red "Overdue" badges** (shame-free design, uses warm amber instead)
 - No complex project management
-- No gamification
-- No long AI responses
+- No gamification that punishes breaks (No streaks)
 - No overwhelming settings
 - No push notifications unless explicitly toggled
 

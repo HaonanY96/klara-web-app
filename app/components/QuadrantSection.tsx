@@ -41,6 +41,12 @@ interface QuadrantSectionProps {
   onReorder?: (quadrantId: QuadrantType, pinnedIds: string[], unpinnedIds: string[]) => void;
   /** Reset order callback */
   onResetOrder?: (quadrantId: QuadrantType) => void;
+  /** Global sorting mode flag */
+  isSortingMode?: boolean;
+  /** Toggle sorting mode (from context menu) */
+  onToggleSortMode?: () => void;
+  /** Direct move handler for mobile */
+  onMoveTask?: (taskId: string, quadrant: QuadrantType) => void;
 }
 
 const QuadrantSection = ({
@@ -73,6 +79,9 @@ const QuadrantSection = ({
   orderingEnabled = false,
   onReorder,
   onResetOrder,
+  isSortingMode = false,
+  onToggleSortMode,
+  onMoveTask,
 }: QuadrantSectionProps) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
@@ -91,20 +100,22 @@ const QuadrantSection = ({
   }, [tasks]);
 
   // Sort: Pinned first
-  const pinnedTasks = orderingEnabled ? localPinned : tasks.filter(t => t.isPinned);
-  const unpinnedTasks = orderingEnabled ? localUnpinned : tasks.filter(t => !t.isPinned);
+  const internalOrdering = isSortingMode && orderingEnabled;
+
+  const pinnedTasks = internalOrdering ? localPinned : tasks.filter(t => t.isPinned);
+  const unpinnedTasks = internalOrdering ? localUnpinned : tasks.filter(t => !t.isPinned);
 
   // Visibility Logic:
   // Ordering mode: show all to allow reorder.
   // Default: show all pinned + top 3 unpinned (or expanded all).
-  const visibleUnpinned = orderingEnabled
+  const visibleUnpinned = internalOrdering
     ? unpinnedTasks
     : isExpanded
       ? unpinnedTasks
       : unpinnedTasks.slice(0, 3);
   const visibleTasks = [...pinnedTasks, ...visibleUnpinned];
 
-  const hiddenCount = orderingEnabled ? 0 : unpinnedTasks.length - visibleUnpinned.length;
+  const hiddenCount = internalOrdering ? 0 : unpinnedTasks.length - visibleUnpinned.length;
 
   const onDragEnter = () => setIsDragOver(true);
   const onDragLeave = () => setIsDragOver(false);
@@ -143,7 +154,7 @@ const QuadrantSection = ({
         <span className="ml-auto font-body text-[11px] text-stone-400 font-medium uppercase tracking-[0.15em] opacity-60">
           {tag}
         </span>
-        {orderingEnabled && onResetOrder && (
+        {internalOrdering && onResetOrder && (
           <button
             onClick={() => onResetOrder(quadrantId)}
             className="text-[12px] text-stone-400 hover:text-orange-500 font-medium underline-offset-2 hover:underline"
@@ -161,7 +172,7 @@ const QuadrantSection = ({
             toggleTask={toggleTask}
             handleDragStart={e => {
               handleDragStart(e, task.id);
-              if (orderingEnabled) {
+              if (internalOrdering) {
                 setDraggingId(task.id);
               }
             }}
@@ -180,9 +191,9 @@ const QuadrantSection = ({
             nudges={nudgeMap?.get(task.id)}
             onNudgeAction={onNudgeAction}
             onNudgeDismiss={onNudgeDismiss}
-            orderingEnabled={orderingEnabled}
+            orderingEnabled={internalOrdering}
             onInternalDragOver={targetId => {
-              if (!orderingEnabled || !draggingId) return;
+              if (!internalOrdering || !draggingId) return;
               const source = tasks.find(t => t.id === draggingId);
               const target = tasks.find(t => t.id === targetId);
               if (!source || !target) return;
@@ -205,14 +216,18 @@ const QuadrantSection = ({
               }
             }}
             onInternalDrop={() => {
-              if (!orderingEnabled) return;
+              if (!internalOrdering) return;
               setDraggingId(null);
               onReorder?.(
                 quadrantId,
-                (orderingEnabled ? localPinned : tasks.filter(t => t.isPinned)).map(t => t.id),
-                (orderingEnabled ? localUnpinned : tasks.filter(t => !t.isPinned)).map(t => t.id)
+                (internalOrdering ? localPinned : tasks.filter(t => t.isPinned)).map(t => t.id),
+                (internalOrdering ? localUnpinned : tasks.filter(t => !t.isPinned)).map(t => t.id)
               );
             }}
+            quadrantId={quadrantId}
+            onToggleSortMode={onToggleSortMode}
+            isSortingMode={isSortingMode}
+            onMoveToQuadrant={onMoveTask}
           />
         ))}
       </div>

@@ -1,8 +1,9 @@
 'use client';
 
 import React, { useEffect } from 'react';
-import { Star, Pin, Trash2, Calendar, Pencil } from 'lucide-react';
+import { Star, Pin, Trash2, Calendar, Pencil, GripVertical, MoveRight } from 'lucide-react';
 import { createPortal } from 'react-dom';
+import type { QuadrantType } from '@/types';
 
 interface TaskContextMenuProps {
   isOpen: boolean;
@@ -15,6 +16,9 @@ interface TaskContextMenuProps {
   onDelete: () => void;
   onAddDate: () => void;
   onEditTask: () => void;
+  onToggleSortMode: () => void;
+  isSorting: boolean;
+  onMoveToQuadrant?: (quadrant: QuadrantType) => void;
 }
 
 /**
@@ -37,6 +41,9 @@ const TaskContextMenu = ({
   onDelete,
   onAddDate,
   onEditTask,
+  onToggleSortMode,
+  isSorting,
+  onMoveToQuadrant,
 }: TaskContextMenuProps) => {
   // Close on escape key
   useEffect(() => {
@@ -76,6 +83,14 @@ const TaskContextMenu = ({
       >
         <div className="py-1.5">
           <MenuButton
+            icon={<GripVertical size={18} className="text-stone-400" />}
+            label={isSorting ? 'Exit Sort Mode' : 'Sort'}
+            onClick={() => {
+              onToggleSortMode();
+              onClose();
+            }}
+          />
+          <MenuButton
             icon={<Calendar size={18} className="text-stone-400" />}
             label="Add Date"
             onClick={() => {
@@ -85,12 +100,49 @@ const TaskContextMenu = ({
           />
           <MenuButton
             icon={<Pencil size={18} className="text-stone-400" />}
-            label="Edit Task"
+            label="Rename"
             onClick={() => {
               onEditTask();
               onClose();
             }}
           />
+          <div className="h-px bg-stone-100 my-1" />
+          {onMoveToQuadrant && (
+            <div className="py-1">
+              <MenuButton
+                icon={<MoveRight size={18} className="text-stone-400" />}
+                label="Move to Do Now"
+                onClick={() => {
+                  onMoveToQuadrant('Do First');
+                  onClose();
+                }}
+              />
+              <MenuButton
+                icon={<MoveRight size={18} className="text-stone-400" />}
+                label="Move to Plan & Focus"
+                onClick={() => {
+                  onMoveToQuadrant('Schedule');
+                  onClose();
+                }}
+              />
+              <MenuButton
+                icon={<MoveRight size={18} className="text-stone-400" />}
+                label="Move to Quick Tasks"
+                onClick={() => {
+                  onMoveToQuadrant('Quick Tasks');
+                  onClose();
+                }}
+              />
+              <MenuButton
+                icon={<MoveRight size={18} className="text-stone-400" />}
+                label="Move to For Later"
+                onClick={() => {
+                  onMoveToQuadrant('Later');
+                  onClose();
+                }}
+              />
+            </div>
+          )}
           <div className="h-px bg-stone-100 my-1" />
           <MenuButton
             icon={

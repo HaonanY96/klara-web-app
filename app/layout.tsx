@@ -19,13 +19,8 @@ const lora = Lora({
 const nationalPark = localFont({
   src: [
     {
-      path: '../public/fonts/national-park/NationalPark-Regular.ttf',
-      weight: '400',
-      style: 'normal',
-    },
-    {
-      path: '../public/fonts/national-park/NationalPark-Light.ttf',
-      weight: '300',
+      path: '../public/fonts/national-park/NationalPark-Variable.ttf',
+      weight: '300 400',
       style: 'normal',
     },
   ],

@@ -112,7 +112,7 @@ export function useTaskHandlers(options: UseTaskHandlersOptions): UseTaskHandler
     async (taskId: string) => {
       const task = tasks.find(t => t.id === taskId);
       if (!task) return;
-      const nextText = window.prompt('Edit task', task.text);
+      const nextText = window.prompt('Rename task', task.text);
       if (nextText === null) return;
       const trimmed = nextText.trim();
       if (!trimmed || trimmed === task.text) return;
