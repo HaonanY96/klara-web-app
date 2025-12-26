@@ -20,7 +20,7 @@ const ReflectionNudge = ({ show, onTryIt, onDismiss }: ReflectionNudgeProps) => 
           className="mb-4"
         >
           <div className="bg-linear-to-r from-orange-50 to-amber-50/50 border border-orange-100/50 rounded-xl px-4 py-3 flex items-center gap-3">
-            <Moon size={16} className="text-orange-400 shrink-0" />
+            <Moon size={16} className="text-brand shrink-0" />
             <p className="text-[13px] text-stone-600 flex-1">
               You&apos;ve been making good progress. Want to take a moment to reflect?
             </p>

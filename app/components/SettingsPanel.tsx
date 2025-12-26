@@ -45,7 +45,7 @@ const ToneOption = ({
         <div
           className={`
           w-5 h-5 rounded-full border-2 flex items-center justify-center mt-0.5 shrink-0
-          ${isSelected ? 'border-orange-400 bg-orange-400' : 'border-stone-300'}
+          ${isSelected ? 'border-brand bg-brand' : 'border-stone-300'}
         `}
         >
           {isSelected && <Check size={12} className="text-white" strokeWidth={3} />}
@@ -205,7 +205,7 @@ const SettingsPanel = ({ isOpen, onClose }: SettingsPanelProps) => {
                     className="peer sr-only"
                   />
                   <span
-                    className="relative w-11 h-6 bg-stone-200 rounded-full peer-checked:bg-orange-400 transition-colors duration-200 after:absolute after:top-0.5 after:left-0.5 after:h-5 after:w-5 after:bg-white after:rounded-full after:shadow after:transition-transform peer-checked:after:translate-x-5"
+                    className="relative w-11 h-6 bg-stone-200 rounded-full peer-checked:bg-brand transition-colors duration-200 after:absolute after:top-0.5 after:left-0.5 after:h-5 after:w-5 after:bg-white after:rounded-full after:shadow after:transition-transform peer-checked:after:translate-x-5"
                     aria-hidden
                   />
                 </label>

@@ -97,7 +97,7 @@ function getCardConfig(type: NudgeType): { bgClass: string; icon: React.ReactNod
     case 'overdue':
       return {
         bgClass: 'bg-orange-50/60 border border-orange-100/50',
-        icon: <Clock size={14} className="text-orange-400 mt-0.5 shrink-0" />,
+        icon: <Clock size={14} className="text-brand mt-0.5 shrink-0" />,
       };
     case 'needs_breakdown':
       return {

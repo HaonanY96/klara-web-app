@@ -114,7 +114,7 @@ const AppMenu = ({ isOpen, onClose, onRefreshState, isInferringState }: AppMenuP
       >
         {/* Header */}
         <div className="flex items-center justify-between px-5 pt-12 pb-6 border-b border-stone-100">
-          <h2 className="text-xl font-medium text-orange-400 font-heading">Klara</h2>
+          <h2 className="text-xl font-medium text-brand font-heading">Klara</h2>
           <button
             onClick={onClose}
             className="w-9 h-9 flex items-center justify-center text-stone-400 hover:text-stone-600 hover:bg-stone-100 rounded-xl transition-colors"

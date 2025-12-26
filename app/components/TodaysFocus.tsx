@@ -61,7 +61,7 @@ const TodaysFocus = ({
   return (
     <section className="mb-6">
       <div className="flex items-center gap-2 mb-3">
-        <Target size={16} className="text-orange-400" />
+        <Target size={16} className="text-brand" />
         <h2 className="text-[14px] font-bold text-stone-700 uppercase tracking-wider font-heading">
           Today&apos;s Focus
         </h2>
@@ -121,7 +121,7 @@ const TodaysFocus = ({
 
             {/* Progress indicator if has subtasks */}
             {task.subTasks.length > 0 && (
-              <span className="text-[12px] text-orange-400 font-medium">
+              <span className="text-[12px] text-brand font-medium">
                 {task.subTasks.filter(st => st.completed).length}/{task.subTasks.length}
               </span>
             )}

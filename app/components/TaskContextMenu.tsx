@@ -148,7 +148,7 @@ const TaskContextMenu = ({
             icon={
               <Star
                 size={18}
-                className={isFocused ? 'text-orange-400' : 'text-stone-400'}
+                className={isFocused ? 'text-brand' : 'text-stone-400'}
                 fill={isFocused ? 'currentColor' : 'none'}
                 strokeWidth={1.5}
               />
@@ -163,7 +163,7 @@ const TaskContextMenu = ({
             icon={
               <Pin
                 size={18}
-                className={isPinned ? 'text-orange-400' : 'text-stone-400'}
+                className={isPinned ? 'text-brand' : 'text-stone-400'}
                 fill={isPinned ? 'currentColor' : 'none'}
                 strokeWidth={1.5}
               />

@@ -342,7 +342,7 @@ const TaskItem = ({
 
           <button
             onClick={() => toggleTask(task.id)}
-            className="mt-0.5 text-stone-200 hover:text-orange-400 transition-colors z-10"
+            className="mt-0.5 text-stone-200 hover:text-brand transition-colors z-10"
           >
             <Circle size={18} strokeWidth={1.5} />
           </button>
@@ -401,7 +401,7 @@ const TaskItem = ({
                       handleToggleFocused(task.id);
                     }}
                     className={`ml-auto transition-all ${
-                      task.isFocused ? 'text-orange-400' : 'text-stone-300 hover:text-orange-300'
+                      task.isFocused ? 'text-brand' : 'text-stone-300 hover:text-orange-300'
                     }`}
                     title={task.isFocused ? "Remove from today's focus" : "Add to today's focus"}
                   >
@@ -442,7 +442,7 @@ const TaskItem = ({
                     ref={dateButtonRef}
                     onClick={handleDateButtonClick}
                     onTouchStart={e => e.stopPropagation()} // Prevent triggering long-press on parent
-                    className="flex items-center gap-1.5 text-[13px] text-stone-400 hover:text-orange-400 transition-colors font-medium tracking-wide"
+                    className="flex items-center gap-1.5 text-[13px] text-stone-400 hover:text-brand transition-colors font-medium tracking-wide"
                   >
                     <Calendar size={14} />
                     {task.dueDate ? 'Change Date' : 'Add Date'}
@@ -489,7 +489,7 @@ const TaskItem = ({
                 {/* 2. AI Suggestions */}
                 {task.aiSuggestions.length > 0 && (
                   <div className="bg-orange-50/40 rounded-lg p-2.5 space-y-2">
-                    <div className="flex items-center gap-1.5 text-[12px] uppercase tracking-wider text-orange-400 mb-1 font-heading italic">
+                    <div className="flex items-center gap-1.5 text-[12px] uppercase tracking-wider text-brand mb-1 font-heading italic">
                       <Sparkles size={12} />
                       <span>Suggestions</span>
                     </div>

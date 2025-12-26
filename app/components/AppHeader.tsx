@@ -74,7 +74,7 @@ const AppHeader = ({
         <div className="flex items-center justify-center">
           <h1
             className={`text-2xl font-normal tracking-tight transition-colors duration-300 font-brand ${
-              isAIOnline ? 'text-orange-400' : 'text-slate-400'
+              isAIOnline ? 'text-brand' : 'text-slate-400'
             }`}
             title={isAIOnline ? 'AI is online' : 'AI is offline'}
           >

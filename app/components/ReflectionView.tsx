@@ -415,7 +415,7 @@ const ReflectionView = () => {
           </h2>
           <div className="flex gap-4 items-start">
             <div className="bg-orange-50 p-2.5 rounded-full mt-0.5 shrink-0">
-              <Sparkles size={18} className="text-orange-400" />
+              <Sparkles size={18} className="text-brand" />
             </div>
             <div>
               <h3 className="text-[15px] text-stone-800 font-heading font-medium mb-1">
@@ -440,7 +440,7 @@ const ReflectionView = () => {
         >
           <div className="flex gap-3 items-start">
             <div className="bg-white p-2 rounded-full shadow-sm shrink-0">
-              <Sparkles size={16} className="text-orange-400" />
+              <Sparkles size={16} className="text-brand" />
             </div>
             <div className="flex-1">
               <p className="text-[15px] text-stone-600 leading-relaxed">
@@ -492,12 +492,12 @@ const ReflectionView = () => {
           </AnimatePresence>
 
           <div className="flex items-center gap-2 mb-4">
-            <Sparkles size={16} className="text-orange-400" />
+            <Sparkles size={16} className="text-brand" />
             <span className="text-[12px] uppercase tracking-widest text-stone-500 font-heading">
               {hasSubmittedToday ? 'Add Another Thought' : "Today's Prompt"}
             </span>
             {streak > 0 && (
-              <span className="ml-auto text-[12px] text-orange-400 bg-orange-50 px-2.5 py-0.5 rounded-full">
+              <span className="ml-auto text-[12px] text-brand bg-orange-50 px-2.5 py-0.5 rounded-full">
                 🔥 {streak} day streak
               </span>
             )}

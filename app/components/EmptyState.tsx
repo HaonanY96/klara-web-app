@@ -80,7 +80,7 @@ const EmptyState = ({ onAddTask, hasCompletedTasks = false }: EmptyStateProps) =
       {/* Message */}
       <p
         className={`text-center font-light text-[15px] leading-relaxed max-w-xs ${
-          hasCompletedTasks ? 'text-orange-400' : 'text-stone-400'
+          hasCompletedTasks ? 'text-brand' : 'text-stone-400'
         }`}
       >
         {message}
@@ -90,7 +90,7 @@ const EmptyState = ({ onAddTask, hasCompletedTasks = false }: EmptyStateProps) =
       {onAddTask && !hasCompletedTasks && (
         <button
           onClick={onAddTask}
-          className="mt-8 text-[12px] text-stone-300 hover:text-orange-400 transition-colors font-light tracking-wide"
+          className="mt-8 text-[12px] text-stone-300 hover:text-brand transition-colors font-light tracking-wide"
         >
           Add something →
         </button>

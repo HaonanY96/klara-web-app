@@ -462,7 +462,7 @@ const KlaraApp = () => {
 
                 <QuadrantSection
                   title="Quick Tasks"
-                  icon={<Clock size={12} className="text-orange-400" />}
+                  icon={<Clock size={12} className="text-brand" />}
                   tasks={groupedTasks['Quick Tasks']}
                   tag="quick wins"
                   quadrantId="Quick Tasks"
@@ -576,7 +576,7 @@ const KlaraApp = () => {
                       setShowInputDatePicker(prev => !prev);
                       inputRef.current?.focus();
                     }}
-                    className={`flex items-center justify-center w-5 h-5 transition-colors ${inputDueDate ? 'text-orange-400' : 'text-stone-300 hover:text-stone-500'}`}
+                    className={`flex items-center justify-center w-5 h-5 transition-colors ${inputDueDate ? 'text-brand' : 'text-stone-300 hover:text-stone-500'}`}
                   >
                     <Calendar size={20} strokeWidth={2} />
                   </button>
@@ -597,7 +597,7 @@ const KlaraApp = () => {
 
               <button
                 type="submit"
-                className={`flex items-center justify-center w-5 h-5 transition-colors ${inputText ? 'text-orange-400 hover:text-orange-500' : 'text-stone-300 opacity-0'}`}
+                className={`flex items-center justify-center w-5 h-5 transition-colors ${inputText ? 'text-brand hover:text-orange-500' : 'text-stone-300 opacity-0'}`}
                 style={{ transform: 'translateY(1px)' }}
               >
                 <Send size={20} strokeWidth={2} />
@@ -609,13 +609,13 @@ const KlaraApp = () => {
           <div className="mt-2 text-[13px] text-stone-300 flex flex-wrap gap-2 font-light items-center min-h-[20px]">
             {isAiThinking ? (
               <div className="flex items-center gap-1.5 animate-pulse text-stone-400">
-                <Sparkles size={12} className="text-orange-400" />
+                <Sparkles size={12} className="text-brand" />
                 <span className="font-medium tracking-wide">Decomposing task...</span>
               </div>
             ) : (
               <>
                 {inputDueDate && (
-                  <span className="text-orange-400 bg-orange-50 px-2 py-0.5 rounded-full flex items-center gap-1">
+                  <span className="text-brand bg-orange-50 px-2 py-0.5 rounded-full flex items-center gap-1">
                     <Calendar size={12} />
                     {parseLocalDate(inputDueDate).toLocaleDateString('en-US', {
                       month: 'short',

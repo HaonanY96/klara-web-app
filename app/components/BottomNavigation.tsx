@@ -19,7 +19,7 @@ const BottomNavigation = ({ activeTab, onTabChange }: BottomNavigationProps) => 
         <Sun
           size={18}
           strokeWidth={2}
-          className={activeTab === 'focus' ? 'text-orange-400' : ''}
+          className={activeTab === 'focus' ? 'text-brand' : ''}
         />
         <span>Focus</span>
       </button>
@@ -31,7 +31,7 @@ const BottomNavigation = ({ activeTab, onTabChange }: BottomNavigationProps) => 
         <Moon
           size={18}
           strokeWidth={2}
-          className={activeTab === 'reflection' ? 'text-orange-400' : ''}
+          className={activeTab === 'reflection' ? 'text-brand' : ''}
         />
         <span>Reflection</span>
       </button>
